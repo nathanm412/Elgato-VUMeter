@@ -23,11 +23,12 @@ import { renderSplitKeyBar } from "../rendering/key-renderer";
 import { AudioLevels } from "../audio/audio-capture";
 import { THEMES, THEME_ORDER } from "../utils/color";
 import { SEGMENTS_ONE_ROW } from "../utils/constants";
+import type { JsonValue } from "@elgato/utils";
 
 interface OneRowSettings {
   theme: string;
   showPeaks: boolean;
-  [key: string]: any;
+  [key: string]: JsonValue;
 }
 
 const DEFAULT_SETTINGS: OneRowSettings = {
@@ -48,7 +49,7 @@ export class VUMeterOneRow extends SingletonAction<OneRowSettings> {
 
   override async onWillAppear(ev: WillAppearEvent<OneRowSettings>): Promise<void> {
     const settings = { ...DEFAULT_SETTINGS, ...ev.payload.settings };
-    const coords = (ev.payload as any).coordinates;
+    const coords = (ev.payload as Record<string, unknown>).coordinates as { row: number; column: number } | undefined;
     if (!coords) return;
 
     const ctx: ActionContext = {

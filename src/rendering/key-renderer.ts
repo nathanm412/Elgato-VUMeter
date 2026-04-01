@@ -128,7 +128,6 @@ export function renderSplitKeyBar(
   const rFill = Math.max(0, Math.min(1, rightFill));
   const color = getSegmentColor(theme, segmentIdx, totalSegments);
   const dimmed = dimColor(color, 0.15);
-  const rgb = hexToRgb(color);
 
   const halfWidth = (SIZE - PADDING * 2 - 4) / 2; // 4px gap between L and R
   const barHeight = SIZE - PADDING * 2;
