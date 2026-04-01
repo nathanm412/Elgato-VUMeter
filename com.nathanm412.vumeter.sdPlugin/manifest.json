@@ -1,0 +1,87 @@
+{
+  "$schema": "https://schemas.elgato.com/streamdeck/plugins/manifest.json",
+  "UUID": "com.nathanm412.vumeter",
+  "Name": "VU Meter",
+  "Version": "1.0.0.0",
+  "Author": "nathanm412",
+  "Description": "Real-time stereo VU meter with gradient key fills and touch display support. Designed for Stream Deck Plus with three display modes: two-row, one-row, and touch strip.",
+  "Category": "Audio",
+  "CategoryIcon": "imgs/category-icon",
+  "Icon": "imgs/plugin-icon",
+  "CodePath": "bin/plugin.js",
+  "SDKVersion": 2,
+  "Software": {
+    "MinimumVersion": "6.6"
+  },
+  "OS": [
+    {
+      "Platform": "mac",
+      "MinimumVersion": "13"
+    },
+    {
+      "Platform": "windows",
+      "MinimumVersion": "10"
+    }
+  ],
+  "Nodejs": {
+    "Version": "20",
+    "Debug": "enabled"
+  },
+  "Actions": [
+    {
+      "UUID": "com.nathanm412.vumeter.two-row",
+      "Name": "VU Meter (Two Row)",
+      "Tooltip": "Stereo VU meter using two rows of 4 keys. Top row = Left channel, Bottom row = Right channel. Each key shows a gradient fill for fine-grained level display.",
+      "Icon": "imgs/actions/two-row",
+      "Controllers": ["Keypad"],
+      "States": [
+        {
+          "Image": "imgs/actions/two-row-key",
+          "TitleAlignment": "bottom",
+          "FontSize": "9"
+        }
+      ],
+      "PropertyInspectorPath": "ui/property-inspector.html",
+      "SupportedInMultiActions": false
+    },
+    {
+      "UUID": "com.nathanm412.vumeter.one-row",
+      "Name": "VU Meter (One Row)",
+      "Tooltip": "Compact stereo VU meter using one row of 4 keys. Each key is split vertically showing Left and Right channels side by side.",
+      "Icon": "imgs/actions/one-row",
+      "Controllers": ["Keypad"],
+      "States": [
+        {
+          "Image": "imgs/actions/one-row-key",
+          "TitleAlignment": "bottom",
+          "FontSize": "9"
+        }
+      ],
+      "PropertyInspectorPath": "ui/property-inspector.html",
+      "SupportedInMultiActions": false
+    },
+    {
+      "UUID": "com.nathanm412.vumeter.touch",
+      "Name": "VU Meter (Touch Display)",
+      "Tooltip": "Full-width stereo VU meter rendered on the Stream Deck Plus touch strip with classic analog needle style.",
+      "Icon": "imgs/actions/touch",
+      "Controllers": ["Encoder"],
+      "Encoder": {
+        "Layout": "layouts/vumeter-touch.json",
+        "TriggerDescription": {
+          "Rotate": "Adjust sensitivity",
+          "Push": "Toggle peak hold",
+          "Touch": "Cycle color theme",
+          "LongTouch": "Reset peaks"
+        }
+      },
+      "States": [
+        {
+          "Image": "imgs/actions/touch-icon"
+        }
+      ],
+      "PropertyInspectorPath": "ui/property-inspector.html",
+      "SupportedInMultiActions": false
+    }
+  ]
+}

@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>VU Meter Settings</title>
+  <style>
+    :root {
+      --bg: #2c2c2c;
+      --surface: #3a3a3a;
+      --text: #d4d4d4;
+      --text-dim: #888;
+      --accent: #0078d4;
+      --border: #555;
+      --input-bg: #1e1e1e;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 12px;
+      background: var(--bg);
+      color: var(--text);
+      padding: 12px;
+    }
+
+    .section {
+      margin-bottom: 16px;
+    }
+
+    .section-title {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-dim);
+      margin-bottom: 8px;
+      padding-bottom: 4px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    label {
+      flex: 0 0 auto;
+      margin-right: 8px;
+    }
+
+    select, input[type="range"] {
+      flex: 1;
+      max-width: 160px;
+      background: var(--input-bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-size: 12px;
+    }
+
+    select:focus, input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      accent-color: var(--accent);
+    }
+
+    .theme-preview {
+      display: flex;
+      gap: 2px;
+      margin-top: 6px;
+      height: 20px;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .theme-preview .seg {
+      flex: 1;
+      transition: background 0.2s;
+    }
+
+    .info {
+      font-size: 10px;
+      color: var(--text-dim);
+      margin-top: 12px;
+      line-height: 1.5;
+      padding: 8px;
+      background: var(--surface);
+      border-radius: 6px;
+    }
+
+    .info strong {
+      color: var(--text);
+    }
+  </style>
+</head>
+<body>
+  <div class="section">
+    <div class="section-title">Color Theme</div>
+    <div class="row">
+      <label for="theme">Theme</label>
+      <select id="theme">
+        <option value="classic">Classic (Green → Red)</option>
+        <option value="blue">Cool Blue</option>
+        <option value="purple">Synthwave</option>
+        <option value="warm">Warm</option>
+      </select>
+    </div>
+    <div class="theme-preview" id="themePreview"></div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Display Options</div>
+    <div class="row">
+      <label for="showPeaks">Show Peak Indicators</label>
+      <input type="checkbox" id="showPeaks" checked>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Audio</div>
+    <div class="row">
+      <label>Sensitivity adapts automatically to your audio output level.</label>
+    </div>
+  </div>
+
+  <div class="info">
+    <strong>Tips:</strong><br>
+    • Press any VU key to cycle through color themes<br>
+    • Touch display: rotate dial = sensitivity, push = toggle peaks<br>
+    • Touch display: tap = cycle theme, long press = reset peaks<br>
+    • Place keys left-to-right for correct low→high meter display
+  </div>
+
+  <script>
+    // Stream Deck Property Inspector communication
+    const THEMES = {
+      classic: ["#00CC00", "#00DD00", "#00EE00", "#CCDD00", "#FFCC00", "#FF6600", "#FF2200", "#FF0000"],
+      blue:    ["#0044CC", "#0066DD", "#0088EE", "#00AAFF", "#00CCFF", "#44DDFF", "#FF8800", "#FF2200"],
+      purple:  ["#6600CC", "#8800DD", "#AA00EE", "#CC00FF", "#DD44FF", "#FF44CC", "#FF2288", "#FF0044"],
+      warm:    ["#FF6600", "#FF7700", "#FF8800", "#FF9900", "#FFAA00", "#FFBB00", "#FF4400", "#FF0000"],
+    };
+
+    let websocket = null;
+    let uuid = null;
+    let actionInfo = null;
+    let settings = {};
+
+    function connectElgatoStreamDeckSocket(inPort, inPropertyInspectorUUID, inRegisterEvent, inInfo, inActionInfo) {
+      uuid = inPropertyInspectorUUID;
+      actionInfo = JSON.parse(inActionInfo);
+      settings = actionInfo.payload?.settings || {};
+
+      websocket = new WebSocket("ws://127.0.0.1:" + inPort);
+
+      websocket.onopen = function () {
+        websocket.send(JSON.stringify({
+          event: inRegisterEvent,
+          uuid: inPropertyInspectorUUID,
+        }));
+        loadSettings();
+      };
+
+      websocket.onmessage = function (evt) {
+        const data = JSON.parse(evt.data);
+        if (data.event === "didReceiveSettings") {
+          settings = data.payload?.settings || {};
+          loadSettings();
+        }
+      };
+    }
+
+    function loadSettings() {
+      document.getElementById("theme").value = settings.theme || "classic";
+      document.getElementById("showPeaks").checked = settings.showPeaks !== false;
+      updateThemePreview();
+    }
+
+    function saveSettings() {
+      settings.theme = document.getElementById("theme").value;
+      settings.showPeaks = document.getElementById("showPeaks").checked;
+
+      if (websocket && websocket.readyState === WebSocket.OPEN) {
+        websocket.send(JSON.stringify({
+          event: "setSettings",
+          context: uuid,
+          payload: settings,
+        }));
+      }
+    }
+
+    function updateThemePreview() {
+      const themeName = document.getElementById("theme").value;
+      const colors = THEMES[themeName] || THEMES.classic;
+      const preview = document.getElementById("themePreview");
+      preview.innerHTML = "";
+      for (const color of colors) {
+        const seg = document.createElement("div");
+        seg.className = "seg";
+        seg.style.background = color;
+        preview.appendChild(seg);
+      }
+    }
+
+    document.getElementById("theme").addEventListener("change", function () {
+      updateThemePreview();
+      saveSettings();
+    });
+
+    document.getElementById("showPeaks").addEventListener("change", saveSettings);
+
+    // Initialize preview
+    updateThemePreview();
+  </script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+.git/
+*.log
+*.map
+*.d.ts
+.env*
+node_modules/.cache/
+**/*.test.js
+**/*.spec.js
