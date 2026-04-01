@@ -25,12 +25,13 @@ import streamDeck, {
 import {renderTouchSlot, renderCompactTouchSlot} from "../rendering/touch-renderer";
 import {AudioLevels} from "../audio/audio-capture";
 import {THEMES, THEME_ORDER} from "../utils/color";
+import type {JsonValue} from "@elgato/utils";
 
 interface TouchSettings {
 	theme: string;
 	showPeaks: boolean;
 	sensitivity: number;
-	[key: string]: any;
+	[key: string]: JsonValue;
 }
 
 const DEFAULT_SETTINGS: TouchSettings = {
@@ -59,7 +60,7 @@ export class VUMeterTouch extends SingletonAction<TouchSettings> {
 
 	override async onWillAppear(ev: WillAppearEvent<TouchSettings>): Promise<void> {
 		const settings = {...DEFAULT_SETTINGS, ...ev.payload.settings};
-		const coords = (ev.payload as any).coordinates;
+		const coords = (ev.payload as Record<string, unknown>).coordinates as { row: number; column: number } | undefined;
 
 		const ctx: EncoderContext = {
 			context: ev.action.id,

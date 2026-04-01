@@ -99,7 +99,7 @@ function renderChannelBar(
   theme: ColorTheme,
   showPeaks: boolean,
   label: string,
-  showLabel: boolean,
+  _showLabel: boolean,
 ): string {
   let svg = "";
   const startSeg = slotIndex * segmentsPerSlot;
@@ -159,7 +159,7 @@ function dbToNormalized(db: number): number {
 export function renderCompactTouchSlot(
   levels: AudioLevels,
   theme: ColorTheme,
-  showPeaks = true,
+  _showPeaks = true,
 ): string {
   const segments = 16;
   const segWidth = (W - 8) / segments;
