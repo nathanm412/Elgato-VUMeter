@@ -38,7 +38,7 @@
         {
           "Image": "imgs/actions/two-row-key",
           "TitleAlignment": "bottom",
-          "FontSize": "9"
+          "FontSize": 9
         }
       ],
       "PropertyInspectorPath": "ui/property-inspector.html",
@@ -54,7 +54,7 @@
         {
           "Image": "imgs/actions/one-row-key",
           "TitleAlignment": "bottom",
-          "FontSize": "9"
+          "FontSize": 9
         }
       ],
       "PropertyInspectorPath": "ui/property-inspector.html",
@@ -67,7 +67,7 @@
       "Icon": "imgs/actions/touch",
       "Controllers": ["Encoder"],
       "Encoder": {
-        "Layout": "layouts/vumeter-touch.json",
+        "layout": "layouts/vumeter-touch.json",
         "TriggerDescription": {
           "Rotate": "Adjust sensitivity",
           "Push": "Toggle peak hold",

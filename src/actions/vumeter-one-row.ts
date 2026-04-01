@@ -21,12 +21,13 @@ import streamDeck, {
 } from "@elgato/streamdeck";
 import { renderSplitKeyBar } from "../rendering/key-renderer";
 import { AudioLevels } from "../audio/audio-capture";
-import { ColorTheme, THEMES, THEME_ORDER } from "../utils/color";
+import { THEMES, THEME_ORDER } from "../utils/color";
 import { SEGMENTS_ONE_ROW } from "../utils/constants";
 
 interface OneRowSettings {
   theme: string;
   showPeaks: boolean;
+  [key: string]: any;
 }
 
 const DEFAULT_SETTINGS: OneRowSettings = {
@@ -41,13 +42,13 @@ interface ActionContext {
 }
 
 @action({ UUID: "com.nathanm412.vumeter.one-row" })
-export class VUMeterOneRow extends SingletonAction {
+export class VUMeterOneRow extends SingletonAction<OneRowSettings> {
   private contexts: Map<string, ActionContext> = new Map();
   private lastImages: Map<string, string> = new Map();
 
-  override async onWillAppear(ev: WillAppearEvent): Promise<void> {
-    const settings = { ...DEFAULT_SETTINGS, ...ev.payload.settings } as OneRowSettings;
-    const coords = ev.payload.coordinates;
+  override async onWillAppear(ev: WillAppearEvent<OneRowSettings>): Promise<void> {
+    const settings = { ...DEFAULT_SETTINGS, ...ev.payload.settings };
+    const coords = (ev.payload as any).coordinates;
     if (!coords) return;
 
     const ctx: ActionContext = {
@@ -62,11 +63,11 @@ export class VUMeterOneRow extends SingletonAction {
     await ev.action.setImage(img);
   }
 
-  override async onWillDisappear(ev: WillDisappearEvent): Promise<void> {
+  override async onWillDisappear(ev: WillDisappearEvent<OneRowSettings>): Promise<void> {
     this.contexts.delete(ev.action.id);
   }
 
-  override async onKeyDown(ev: KeyDownEvent): Promise<void> {
+  override async onKeyDown(ev: KeyDownEvent<OneRowSettings>): Promise<void> {
     const ctx = this.contexts.get(ev.action.id);
     if (!ctx) return;
 
@@ -78,6 +79,20 @@ export class VUMeterOneRow extends SingletonAction {
   }
 
   async updateLevels(levels: AudioLevels): Promise<void> {
+    // Define helpers outside the loop to avoid re-allocating memory ~20 times a second
+    const calcFill = (level: number, start: number, end: number) => {
+      if (level >= end) return 1.0;
+      if (level > start) return (level - start) / (end - start);
+      return 0;
+    };
+
+    const calcPeak = (peak: number, start: number, end: number) => {
+      if (peak >= start && peak < end) {
+        return (peak - start) / (end - start);
+      }
+      return -1;
+    };
+
     for (const [id, ctx] of this.contexts) {
       const theme = THEMES[ctx.settings.theme] || THEMES.classic;
       const segIdx = ctx.column;
@@ -85,23 +100,10 @@ export class VUMeterOneRow extends SingletonAction {
       const segStart = segIdx / SEGMENTS_ONE_ROW;
       const segEnd = (segIdx + 1) / SEGMENTS_ONE_ROW;
 
-      const calcFill = (level: number) => {
-        if (level >= segEnd) return 1.0;
-        if (level > segStart) return (level - segStart) / (segEnd - segStart);
-        return 0;
-      };
-
-      const calcPeak = (peak: number) => {
-        if (peak >= segStart && peak < segEnd) {
-          return (peak - segStart) / (segEnd - segStart);
-        }
-        return -1;
-      };
-
-      const leftFill = calcFill(levels.left);
-      const rightFill = calcFill(levels.right);
-      const peakL = ctx.settings.showPeaks ? calcPeak(levels.peakLeft) : -1;
-      const peakR = ctx.settings.showPeaks ? calcPeak(levels.peakRight) : -1;
+      const leftFill = calcFill(levels.left, segStart, segEnd);
+      const rightFill = calcFill(levels.right, segStart, segEnd);
+      const peakL = ctx.settings.showPeaks ? calcPeak(levels.peakLeft, segStart, segEnd) : -1;
+      const peakR = ctx.settings.showPeaks ? calcPeak(levels.peakRight, segStart, segEnd) : -1;
 
       const img = renderSplitKeyBar(leftFill, rightFill, segIdx, SEGMENTS_ONE_ROW, theme, peakL, peakR);
 
@@ -109,11 +111,10 @@ export class VUMeterOneRow extends SingletonAction {
       if (img !== lastImg) {
         this.lastImages.set(id, img);
         try {
-          for (const a of streamDeck.actions) {
-            if (a.id === id) {
-              await a.setImage(img);
-              break;
-            }
+          // Find the specific action instance by its ID to update its image
+          const action = streamDeck.actions.find((a) => a.id === id);
+          if (action) {
+            await action.setImage(img);
           }
         } catch {
           // Action may have been removed
