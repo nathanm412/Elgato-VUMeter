@@ -4,7 +4,7 @@
   "description": "Real-time stereo VU meter for Elgato Stream Deck Plus with gradient key fills and touch display support",
   "main": "com.nathanm412.vumeter.sdPlugin/bin/plugin.js",
   "scripts": {
-    "build": "rollup -c",
+    "build": "rollup -c && node scripts/copy-assets.js",
     "watch": "tsc --watch",
     "pack": "npm run build && node scripts/pack.js",
     "lint": "eslint src/",
