@@ -1,0 +1,84 @@
+name: Validate Manifest
+
+on:
+  push:
+    paths:
+      - 'com.nathanm412.vumeter.sdPlugin/manifest.json'
+  pull_request:
+    paths:
+      - 'com.nathanm412.vumeter.sdPlugin/manifest.json'
+
+jobs:
+  validate:
+    name: Validate Plugin Manifest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate manifest.json is valid JSON
+        run: python3 -m json.tool com.nathanm412.vumeter.sdPlugin/manifest.json > /dev/null
+
+      - name: Check required fields
+        run: |
+          node -e "
+            const m = require('./com.nathanm412.vumeter.sdPlugin/manifest.json');
+            const required = ['UUID', 'Name', 'Version', 'Author', 'Description', 'CodePath', 'SDKVersion', 'Actions'];
+            const missing = required.filter(f => !m[f]);
+            if (missing.length) {
+              console.error('Missing required fields:', missing.join(', '));
+              process.exit(1);
+            }
+            console.log('All required fields present');
+            console.log('Plugin:', m.Name, 'v' + m.Version);
+            console.log('Actions:', m.Actions.length);
+          "
+
+      - name: Verify action UUIDs are unique
+        run: |
+          node -e "
+            const m = require('./com.nathanm412.vumeter.sdPlugin/manifest.json');
+            const uuids = m.Actions.map(a => a.UUID);
+            const dupes = uuids.filter((u, i) => uuids.indexOf(u) !== i);
+            if (dupes.length) {
+              console.error('Duplicate action UUIDs:', dupes.join(', '));
+              process.exit(1);
+            }
+            console.log('All action UUIDs unique:', uuids.join(', '));
+          "
+
+      - name: Verify referenced files exist
+        run: |
+          cd com.nathanm412.vumeter.sdPlugin
+          node -e "
+            const fs = require('fs');
+            const m = require('./manifest.json');
+            const errors = [];
+
+            // Check icon files (SVG)
+            for (const ext of ['.svg', '.png']) {
+              if (fs.existsSync(m.Icon + ext)) break;
+              if (ext === '.png') {
+                // At least SVG should exist
+                if (!fs.existsSync(m.Icon + '.svg')) {
+                  errors.push('Missing plugin icon: ' + m.Icon);
+                }
+              }
+            }
+
+            // Check action icons
+            for (const action of m.Actions) {
+              const iconPath = action.Icon + '.svg';
+              if (!fs.existsSync(iconPath) && !fs.existsSync(action.Icon + '.png')) {
+                errors.push('Missing action icon: ' + action.Icon);
+              }
+              if (action.PropertyInspectorPath && !fs.existsSync(action.PropertyInspectorPath)) {
+                errors.push('Missing PI: ' + action.PropertyInspectorPath);
+              }
+            }
+
+            if (errors.length) {
+              errors.forEach(e => console.error('ERROR:', e));
+              process.exit(1);
+            }
+            console.log('All referenced files exist');
+          "

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">
+  <rect width="40" height="40" rx="4" fill="#0A0A0A"/>
+  <!-- Touch strip representation -->
+  <rect x="4" y="8" width="32" height="10" rx="2" fill="#1A2A1A"/>
+  <rect x="4" y="8" width="22" height="10" rx="2" fill="#00CC00" opacity="0.8"/>
+
+  <rect x="4" y="22" width="32" height="10" rx="2" fill="#1A2A1A"/>
+  <rect x="4" y="22" width="18" height="10" rx="2" fill="#00CC00" opacity="0.8"/>
+
+  <text x="20" y="7" text-anchor="middle" font-size="5" font-family="monospace" fill="#888">TOUCH</text>
+</svg>
