@@ -76,7 +76,7 @@ describe("getSegmentColor", () => {
 
 describe("themes", () => {
   it("all themes have 8 segment colors", () => {
-    for (const [name, theme] of Object.entries(THEMES)) {
+    for (const [, theme] of Object.entries(THEMES)) {
       expect(theme.segments).toHaveLength(8);
       expect(theme.name).toBeTruthy();
       expect(theme.background).toMatch(/^#/);

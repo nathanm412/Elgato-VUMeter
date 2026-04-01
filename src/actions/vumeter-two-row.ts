@@ -25,12 +25,13 @@ import {renderKeyBar} from "../rendering/key-renderer";
 import {AudioLevels} from "../audio/audio-capture";
 import {THEMES, THEME_ORDER} from "../utils/color";
 import {SEGMENTS_TWO_ROW} from "../utils/constants";
+import type {JsonValue} from "@elgato/utils";
 
 interface TwoRowSettings {
 	theme: string;
 	showPeaks: boolean;
 	peakHold: boolean;
-	[key: string]: any;
+	[key: string]: JsonValue;
 }
 
 const DEFAULT_SETTINGS: TwoRowSettings = {
@@ -53,7 +54,7 @@ export class VUMeterTwoRow extends SingletonAction<TwoRowSettings> {
 
 	override async onWillAppear(ev: WillAppearEvent<TwoRowSettings>): Promise<void> {
 		const settings = {...DEFAULT_SETTINGS, ...ev.payload.settings};
-		const coords = (ev.payload as any).coordinates;
+		const coords = (ev.payload as Record<string, unknown>).coordinates as { row: number; column: number } | undefined;
 		if (!coords) return;
 
 		const ctx: ActionContext = {
@@ -71,11 +72,11 @@ export class VUMeterTwoRow extends SingletonAction<TwoRowSettings> {
 		await ev.action.setImage(img);
 	}
 
-	override async onWillDisappear(ev: WillDisappearEvent<any>): Promise<void> {
+	override async onWillDisappear(ev: WillDisappearEvent<TwoRowSettings>): Promise<void> {
 		this.contexts.delete(ev.action.id);
 	}
 
-	override async onKeyDown(ev: KeyDownEvent<any>): Promise<void> {
+	override async onKeyDown(ev: KeyDownEvent<TwoRowSettings>): Promise<void> {
 		// Cycle through themes on key press
 		const ctx = this.contexts.get(ev.action.id);
 		if (!ctx) return;

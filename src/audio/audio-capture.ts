@@ -258,7 +258,7 @@ export class AudioCapture extends EventEmitter {
     this.peakRight = 0;
   }
 
-  adjustSensitivity(delta: number): void {
+  adjustSensitivity(_delta: number): void {
     // Manual sensitivity override — clear history to let it readapt
     this.history = [];
   }
