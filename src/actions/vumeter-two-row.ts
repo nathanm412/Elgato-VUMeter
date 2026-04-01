@@ -53,7 +53,7 @@ export class VUMeterTwoRow extends SingletonAction<TwoRowSettings> {
 
 	override async onWillAppear(ev: WillAppearEvent<TwoRowSettings>): Promise<void> {
 		const settings = {...DEFAULT_SETTINGS, ...ev.payload.settings};
-		const coords = ev.payload.coordinates;
+		const coords = (ev.payload as any).coordinates;
 		if (!coords) return;
 
 		const ctx: ActionContext = {

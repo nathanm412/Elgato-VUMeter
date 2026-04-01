@@ -9,7 +9,7 @@
  * Falls back to a simulated audio source for development/testing.
  */
 
-import { ChildProcess, spawn } from "child_process";
+import { type ChildProcess, spawn } from "node:child_process";
 import { EventEmitter } from "events";
 import * as path from "path";
 import * as fs from "fs";

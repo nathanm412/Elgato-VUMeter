@@ -14,6 +14,7 @@
 
 import streamDeck, {
 	action,
+	DialAction,
 	DialDownEvent,
 	DialRotateEvent,
 	SingletonAction,
@@ -58,7 +59,7 @@ export class VUMeterTouch extends SingletonAction<TouchSettings> {
 
 	override async onWillAppear(ev: WillAppearEvent<TouchSettings>): Promise<void> {
 		const settings = {...DEFAULT_SETTINGS, ...ev.payload.settings};
-		const coords = ev.payload.coordinates;
+		const coords = (ev.payload as any).coordinates;
 
 		const ctx: EncoderContext = {
 			context: ev.action.id,
@@ -115,8 +116,8 @@ export class VUMeterTouch extends SingletonAction<TouchSettings> {
 			if (img !== lastImg) {
 				this.lastImages.set(id, img);
 				try {
-					const action = streamDeck.actions.find((a) => a.id === id);
-					if (action) {
+					const action = streamDeck.actions.find((a) => a.id === id) as DialAction | undefined;
+					if (action && "setFeedback" in action) {
 						await action.setFeedback({canvas: img});
 					}
 				} catch {
