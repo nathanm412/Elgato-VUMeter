@@ -41,12 +41,12 @@ interface ActionContext {
 }
 
 @action({ UUID: "com.nathanm412.vumeter.one-row" })
-export class VUMeterOneRow extends SingletonAction {
+export class VUMeterOneRow extends SingletonAction<OneRowSettings> {
   private contexts: Map<string, ActionContext> = new Map();
   private lastImages: Map<string, string> = new Map();
 
-  override async onWillAppear(ev: WillAppearEvent): Promise<void> {
-    const settings = { ...DEFAULT_SETTINGS, ...ev.payload.settings } as OneRowSettings;
+  override async onWillAppear(ev: WillAppearEvent<OneRowSettings>): Promise<void> {
+    const settings = { ...DEFAULT_SETTINGS, ...ev.payload.settings };
     const coords = ev.payload.coordinates;
     if (!coords) return;
 
@@ -62,11 +62,11 @@ export class VUMeterOneRow extends SingletonAction {
     await ev.action.setImage(img);
   }
 
-  override async onWillDisappear(ev: WillDisappearEvent): Promise<void> {
+  override async onWillDisappear(ev: WillDisappearEvent<OneRowSettings>): Promise<void> {
     this.contexts.delete(ev.action.id);
   }
 
-  override async onKeyDown(ev: KeyDownEvent): Promise<void> {
+  override async onKeyDown(ev: KeyDownEvent<OneRowSettings>): Promise<void> {
     const ctx = this.contexts.get(ev.action.id);
     if (!ctx) return;
 
@@ -109,12 +109,7 @@ export class VUMeterOneRow extends SingletonAction {
       if (img !== lastImg) {
         this.lastImages.set(id, img);
         try {
-          for (const a of streamDeck.actions) {
-            if (a.id === id) {
-              await a.setImage(img);
-              break;
-            }
-          }
+          await this.setImage(img, ctx);
         } catch {
           // Action may have been removed
         }
@@ -126,3 +121,5 @@ export class VUMeterOneRow extends SingletonAction {
     return this.contexts.size;
   }
 }
+
+
