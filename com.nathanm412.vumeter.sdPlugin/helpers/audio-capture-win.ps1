@@ -44,7 +44,7 @@ public class AudioMeter {
     private interface IAudioMeterInformation {
         int GetPeakValue(out float pfPeak);
         int GetMeteringChannelCount(out int pnChannelCount);
-        int GetChannelsPeakValues(int u32ChannelCount, [Out] float[] afPeakValues);
+        int GetChannelsPeakValues(int u32ChannelCount, [Out, MarshalAs(UnmanagedType.LPArray)] float[] afPeakValues);
     }
 
     [ComImport, Guid("BCDE0395-E52F-467C-8E3D-C4579291692E")]
