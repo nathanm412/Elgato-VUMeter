@@ -72,6 +72,14 @@ describe("getSegmentColor", () => {
     // Should be an interpolated value, not crash
     expect(color).toMatch(/^#[0-9a-f]{6}$/);
   });
+
+  it("handles totalSegments=1 without NaN", () => {
+    const theme = THEMES.classic;
+    const color = getSegmentColor(theme, 0, 1);
+    expect(color).toMatch(/^#[0-9a-fA-F]{6}$/);
+    // Should return a middle segment color
+    expect(color).toBe(theme.segments[Math.floor(theme.segments.length / 2)]);
+  });
 });
 
 describe("themes", () => {

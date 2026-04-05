@@ -1,17 +1,15 @@
 /**
  * Two-Row VU Meter Action
  *
- * Uses all 8 keys of the Stream Deck Plus (2 rows × 4 columns).
- * Top row (keys 0-3) = Left channel
- * Bottom row (keys 4-7) = Right channel
+ * Uses keys arranged in up to 2 rows on any Stream Deck model.
+ * Top row = Left channel, Bottom row = Right channel.
  *
- * Each key renders a vertical bar with gradient fill, so 4 keys per channel
- * with continuous fill levels gives us far more resolution than the original
- * 8-segment binary display.
+ * Dynamically detects how many keys the user has placed and adapts
+ * the segment count accordingly. Supports both vertical (bottom-to-top)
+ * and horizontal (left-to-right) bar orientations.
  *
- * Key layout on Stream Deck Plus:
- *   [L1] [L2] [L3] [L4]    <- Left channel, low to high
- *   [R1] [R2] [R3] [R4]    <- Right channel, low to high
+ * When all keys are in a single row with horizontal orientation,
+ * automatically switches to mono mode spanning the full width.
  */
 
 import streamDeck, {
@@ -21,16 +19,16 @@ import streamDeck, {
 	WillAppearEvent,
 	WillDisappearEvent,
 } from "@elgato/streamdeck";
-import {renderKeyBar} from "../rendering/key-renderer";
+import {renderKeyBar, renderHorizontalKeyBar} from "../rendering/key-renderer";
 import {AudioLevels} from "../audio/audio-capture";
 import {THEMES, THEME_ORDER} from "../utils/color";
-import {SEGMENTS_TWO_ROW} from "../utils/constants";
 import type {JsonValue} from "@elgato/utils";
 
 interface TwoRowSettings {
 	theme: string;
 	showPeaks: boolean;
 	peakHold: boolean;
+	orientation: "vertical" | "horizontal";
 	[key: string]: JsonValue;
 }
 
@@ -38,12 +36,13 @@ const DEFAULT_SETTINGS: TwoRowSettings = {
 	theme: "classic",
 	showPeaks: true,
 	peakHold: true,
+	orientation: "vertical",
 };
 
 interface ActionContext {
 	context: string;
 	row: number;    // 0 = top (left), 1 = bottom (right)
-	column: number; // 0-3
+	column: number;
 	settings: TwoRowSettings;
 }
 
@@ -51,6 +50,35 @@ interface ActionContext {
 export class VUMeterTwoRow extends SingletonAction<TwoRowSettings> {
 	private contexts: Map<string, ActionContext> = new Map();
 	private lastImages: Map<string, string> = new Map();
+	private totalSegments = 1;
+	private minColumn = 0;
+	private isSingleRowMode = false;
+
+	private computeSegmentInfo(): void {
+		if (this.contexts.size === 0) {
+			this.totalSegments = 1;
+			this.minColumn = 0;
+			this.isSingleRowMode = false;
+			return;
+		}
+
+		const columns: number[] = [];
+		const rows = new Set<number>();
+		for (const ctx of this.contexts.values()) {
+			columns.push(ctx.column);
+			rows.add(ctx.row);
+		}
+
+		const oldSegments = this.totalSegments;
+		this.minColumn = Math.min(...columns);
+		this.totalSegments = Math.max(...columns) - this.minColumn + 1;
+		this.isSingleRowMode = rows.size === 1;
+
+		// Force full re-render when segment count changes
+		if (oldSegments !== this.totalSegments) {
+			this.lastImages.clear();
+		}
+	}
 
 	override async onWillAppear(ev: WillAppearEvent<TwoRowSettings>): Promise<void> {
 		const settings = {...DEFAULT_SETTINGS, ...ev.payload.settings};
@@ -64,16 +92,20 @@ export class VUMeterTwoRow extends SingletonAction<TwoRowSettings> {
 			settings,
 		};
 		this.contexts.set(ev.action.id, ctx);
+		this.computeSegmentInfo();
 
 		// Set initial dark state
 		const theme = THEMES[settings.theme] || THEMES.classic;
-		const segIdx = coords.column;
-		const img = renderKeyBar(0, segIdx, SEGMENTS_TWO_ROW, theme, -1, false);
+		const segIdx = coords.column - this.minColumn;
+		const renderFn = settings.orientation === "horizontal" ? renderHorizontalKeyBar : renderKeyBar;
+		const img = renderFn(0, segIdx, this.totalSegments, theme, -1, false);
 		await ev.action.setImage(img);
 	}
 
 	override async onWillDisappear(ev: WillDisappearEvent<TwoRowSettings>): Promise<void> {
 		this.contexts.delete(ev.action.id);
+		this.lastImages.delete(ev.action.id);
+		this.computeSegmentInfo();
 	}
 
 	override async onKeyDown(ev: KeyDownEvent<TwoRowSettings>): Promise<void> {
@@ -95,15 +127,24 @@ export class VUMeterTwoRow extends SingletonAction<TwoRowSettings> {
 	async updateLevels(levels: AudioLevels): Promise<void> {
 		for (const [id, ctx] of this.contexts) {
 			const theme = THEMES[ctx.settings.theme] || THEMES.classic;
-			const segIdx = ctx.column;
-			const isLeftChannel = ctx.row === 0;
-			const channelLevel = isLeftChannel ? levels.left : levels.right;
-			const channelPeak = isLeftChannel ? levels.peakLeft : levels.peakRight;
+			const segIdx = ctx.column - this.minColumn;
+			const isHorizontal = ctx.settings.orientation === "horizontal";
+
+			// In single-row horizontal mode, use mono (louder channel)
+			let channelLevel: number;
+			let channelPeak: number;
+			if (this.isSingleRowMode && isHorizontal) {
+				channelLevel = Math.max(levels.left, levels.right);
+				channelPeak = Math.max(levels.peakLeft, levels.peakRight);
+			} else {
+				const isLeftChannel = ctx.row === 0;
+				channelLevel = isLeftChannel ? levels.left : levels.right;
+				channelPeak = isLeftChannel ? levels.peakLeft : levels.peakRight;
+			}
 
 			// Calculate fill level for this specific key
-			// Each key covers 1/4 of the total range
-			const segStart = segIdx / SEGMENTS_TWO_ROW;
-			const segEnd = (segIdx + 1) / SEGMENTS_TWO_ROW;
+			const segStart = segIdx / this.totalSegments;
+			const segEnd = (segIdx + 1) / this.totalSegments;
 
 			let fillLevel: number;
 			if (channelLevel >= segEnd) {
@@ -120,14 +161,14 @@ export class VUMeterTwoRow extends SingletonAction<TwoRowSettings> {
 				peakLevel = (channelPeak - segStart) / (segEnd - segStart);
 			}
 
-			const img = renderKeyBar(fillLevel, segIdx, SEGMENTS_TWO_ROW, theme, peakLevel, true);
+			const renderFn = isHorizontal ? renderHorizontalKeyBar : renderKeyBar;
+			const img = renderFn(fillLevel, segIdx, this.totalSegments, theme, peakLevel, true);
 
 			// Only update if the image actually changed (reduces USB traffic)
 			const lastImg = this.lastImages.get(id);
 			if (img !== lastImg) {
 				this.lastImages.set(id, img);
 				try {
-					// Use the actions collection to find this specific action instance
 					const action = streamDeck.actions.find((a) => a.id === id);
 					if (action) {
 						await action.setImage(img);
@@ -143,4 +184,3 @@ export class VUMeterTwoRow extends SingletonAction<TwoRowSettings> {
 		return this.contexts.size;
 	}
 }
-

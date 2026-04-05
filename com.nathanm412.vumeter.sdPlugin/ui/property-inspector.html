@@ -116,6 +116,17 @@
     <div class="theme-preview" id="themePreview"></div>
   </div>
 
+  <div class="section" id="orientationSection">
+    <div class="section-title">Orientation</div>
+    <div class="row">
+      <label for="orientation">Bar Direction</label>
+      <select id="orientation">
+        <option value="vertical">Vertical (bottom to top)</option>
+        <option value="horizontal">Horizontal (left to right)</option>
+      </select>
+    </div>
+  </div>
+
   <div class="section">
     <div class="section-title">Display Options</div>
     <div class="row">
@@ -136,7 +147,9 @@
     • Press any VU key to cycle through color themes<br>
     • Touch display: rotate dial = sensitivity, push = toggle peaks<br>
     • Touch display: tap = cycle theme, long press = reset peaks<br>
-    • Place keys left-to-right for correct low→high meter display
+    • Place any number of keys left-to-right — the meter adapts automatically<br>
+    • Use horizontal mode for a classic left-to-right level display<br>
+    • Two-row horizontal with a single row of keys = mono meter
   </div>
 
   <script>
@@ -180,12 +193,18 @@
     function loadSettings() {
       document.getElementById("theme").value = settings.theme || "classic";
       document.getElementById("showPeaks").checked = settings.showPeaks !== false;
+      document.getElementById("orientation").value = settings.orientation || "vertical";
       updateThemePreview();
+
+      // Hide orientation for touch action (not applicable)
+      const isTouchAction = actionInfo?.action === "com.nathanm412.vumeter.touch";
+      document.getElementById("orientationSection").style.display = isTouchAction ? "none" : "";
     }
 
     function saveSettings() {
       settings.theme = document.getElementById("theme").value;
       settings.showPeaks = document.getElementById("showPeaks").checked;
+      settings.orientation = document.getElementById("orientation").value;
 
       if (websocket && websocket.readyState === WebSocket.OPEN) {
         websocket.send(JSON.stringify({
@@ -215,6 +234,7 @@
     });
 
     document.getElementById("showPeaks").addEventListener("change", saveSettings);
+    document.getElementById("orientation").addEventListener("change", saveSettings);
 
     // Initialize preview
     updateThemePreview();

@@ -99,6 +99,9 @@ export function interpolateColor(hex1: string, hex2: string, t: number): string 
  * segmentCount allows mapping to themes with different numbers of defined colors.
  */
 export function getSegmentColor(theme: ColorTheme, segmentIndex: number, totalSegments: number): string {
+  if (totalSegments <= 1) {
+    return theme.segments[Math.floor(theme.segments.length / 2)];
+  }
   const ratio = segmentIndex / (totalSegments - 1);
   const idx = ratio * (theme.segments.length - 1);
   const lo = Math.floor(idx);
