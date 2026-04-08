@@ -1,6 +1,4 @@
 node_modules/
-com.nathanm412.vumeter.sdPlugin/bin/
-*.streamDeckPlugin
 dist/
 *.js.map
 *.d.ts
