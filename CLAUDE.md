@@ -58,7 +58,7 @@ ESLint flat config (`eslint.config.mjs`) with `@typescript-eslint`. Unused vars 
 
 ## Pull Requests
 
-Always create pull requests against `nathanm412/Elgato-VUMeter`, not any upstream repository it may have been forked from.
+Always create pull requests against `nathanm412/Elgato-VUMeter`, not any upstream repository it may have been forked from. Use the `mcp__github__create_pull_request` tool with `owner: "nathanm412"` and `repo: "Elgato-VUMeter"` to ensure the PR targets the correct repository.
 
 ## CI
 
