@@ -13,7 +13,7 @@ jobs:
     name: Validate Plugin Manifest
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Validate manifest.json is valid JSON
         run: python3 -m json.tool com.nathanm412.vumeter.sdPlugin/manifest.json > /dev/null
