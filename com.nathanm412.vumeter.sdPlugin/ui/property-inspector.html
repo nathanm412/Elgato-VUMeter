@@ -127,6 +127,17 @@
     </div>
   </div>
 
+  <div class="section" id="displayStyleSection">
+    <div class="section-title">Display Style</div>
+    <div class="row">
+      <label for="displayStyle">Style</label>
+      <select id="displayStyle">
+        <option value="gradient">Gradient (smooth fills)</option>
+        <option value="solid">Solid (classic on/off)</option>
+      </select>
+    </div>
+  </div>
+
   <div class="section">
     <div class="section-title">Display Options</div>
     <div class="row">
@@ -136,16 +147,16 @@
   </div>
 
   <div class="section">
-    <div class="section-title">Audio</div>
+    <div class="section-title">Audio Sensitivity</div>
     <div class="row">
-      <label>Sensitivity adapts automatically to your audio output level.</label>
+      <label>Sensitivity adapts automatically to your audio output level (auto-gain). On the touch display, rotate the dial to switch to manual sensitivity, and press the dial to toggle back to auto mode.</label>
     </div>
   </div>
 
   <div class="info">
     <strong>Tips:</strong><br>
     • Press any VU key to cycle through color themes<br>
-    • Touch display: rotate dial = sensitivity, push = toggle peaks<br>
+    • Touch display: rotate dial = adjust sensitivity (switches to manual), push = toggle auto/manual<br>
     • Touch display: tap = cycle theme, long press = reset peaks<br>
     • Place any number of keys left-to-right — the meter adapts automatically<br>
     • Use horizontal mode for a classic left-to-right level display<br>
@@ -194,17 +205,20 @@
       document.getElementById("theme").value = settings.theme || "classic";
       document.getElementById("showPeaks").checked = settings.showPeaks !== false;
       document.getElementById("orientation").value = settings.orientation || "vertical";
+      document.getElementById("displayStyle").value = settings.displayStyle || "gradient";
       updateThemePreview();
 
-      // Hide orientation for touch action (not applicable)
+      // Hide orientation and display style for touch action (not applicable)
       const isTouchAction = actionInfo?.action === "com.nathanm412.vumeter.touch";
       document.getElementById("orientationSection").style.display = isTouchAction ? "none" : "";
+      document.getElementById("displayStyleSection").style.display = isTouchAction ? "none" : "";
     }
 
     function saveSettings() {
       settings.theme = document.getElementById("theme").value;
       settings.showPeaks = document.getElementById("showPeaks").checked;
       settings.orientation = document.getElementById("orientation").value;
+      settings.displayStyle = document.getElementById("displayStyle").value;
 
       if (websocket && websocket.readyState === WebSocket.OPEN) {
         websocket.send(JSON.stringify({
@@ -235,6 +249,7 @@
 
     document.getElementById("showPeaks").addEventListener("change", saveSettings);
     document.getElementById("orientation").addEventListener("change", saveSettings);
+    document.getElementById("displayStyle").addEventListener("change", saveSettings);
 
     // Initialize preview
     updateThemePreview();

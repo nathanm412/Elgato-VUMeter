@@ -1,4 +1,4 @@
-import { renderKeyBar, renderSplitKeyBar, renderHorizontalKeyBar, renderHorizontalSplitKeyBar } from "./key-renderer";
+import { renderKeyBar, renderSplitKeyBar, renderHorizontalKeyBar, renderHorizontalSplitKeyBar, renderSolidKeyBar, renderSolidSplitKeyBar } from "./key-renderer";
 import { THEMES } from "../utils/color";
 
 const theme = THEMES.classic;
@@ -105,6 +105,51 @@ describe("renderHorizontalSplitKeyBar", () => {
   it("renders at various segment counts", () => {
     for (const total of [1, 4, 8, 16]) {
       const result = renderHorizontalSplitKeyBar(0.5, 0.5, 0, total, theme);
+      expect(result).toMatch(/^data:image\/svg\+xml,/);
+    }
+  });
+});
+
+describe("renderSolidKeyBar", () => {
+  it("returns a data URI SVG string when lit", () => {
+    const result = renderSolidKeyBar(true, 0, 4, theme);
+    expect(result).toMatch(/^data:image\/svg\+xml,/);
+    expect(result).toContain("svg");
+  });
+
+  it("returns a data URI SVG string when dark", () => {
+    const result = renderSolidKeyBar(false, 0, 4, theme);
+    expect(result).toMatch(/^data:image\/svg\+xml,/);
+  });
+
+  it("renders different colors for different segments", () => {
+    const seg0 = renderSolidKeyBar(true, 0, 8, theme);
+    const seg7 = renderSolidKeyBar(true, 7, 8, theme);
+    expect(seg0).not.toBe(seg7);
+  });
+
+  it("renders peak indicator when specified", () => {
+    const result = renderSolidKeyBar(false, 0, 4, theme, true);
+    const decoded = decodeURIComponent(result);
+    expect(decoded).toContain("stroke");
+  });
+});
+
+describe("renderSolidSplitKeyBar", () => {
+  it("returns a data URI SVG string", () => {
+    const result = renderSolidSplitKeyBar(true, false, 0, 4, theme);
+    expect(result).toMatch(/^data:image\/svg\+xml,/);
+  });
+
+  it("includes L and R labels", () => {
+    const result = decodeURIComponent(renderSolidSplitKeyBar(true, true, 0, 4, theme));
+    expect(result).toContain(">L<");
+    expect(result).toContain(">R<");
+  });
+
+  it("renders at various segment counts", () => {
+    for (const total of [1, 4, 8]) {
+      const result = renderSolidSplitKeyBar(true, false, 0, total, theme);
       expect(result).toMatch(/^data:image\/svg\+xml,/);
     }
   });

@@ -14,12 +14,14 @@
 
 import streamDeck, {
   action,
+  DidReceiveSettingsEvent,
   KeyDownEvent,
   SingletonAction,
   WillAppearEvent,
   WillDisappearEvent,
 } from "@elgato/streamdeck";
-import { renderSplitKeyBar, renderHorizontalSplitKeyBar } from "../rendering/key-renderer";
+import { renderSplitKeyBar, renderHorizontalSplitKeyBar, renderSolidSplitKeyBar } from "../rendering/key-renderer";
+import type { DisplayStyle } from "../rendering/key-renderer";
 import { AudioLevels } from "../audio/audio-capture";
 import { THEMES, THEME_ORDER } from "../utils/color";
 import type { JsonValue } from "@elgato/utils";
@@ -28,6 +30,7 @@ interface OneRowSettings {
   theme: string;
   showPeaks: boolean;
   orientation: "vertical" | "horizontal";
+  displayStyle: DisplayStyle;
   [key: string]: JsonValue;
 }
 
@@ -35,6 +38,7 @@ const DEFAULT_SETTINGS: OneRowSettings = {
   theme: "classic",
   showPeaks: true,
   orientation: "vertical",
+  displayStyle: "gradient",
 };
 
 interface ActionContext {
@@ -91,6 +95,14 @@ export class VUMeterOneRow extends SingletonAction<OneRowSettings> {
     await ev.action.setImage(img);
   }
 
+  override async onDidReceiveSettings(ev: DidReceiveSettingsEvent<OneRowSettings>): Promise<void> {
+    const ctx = this.contexts.get(ev.action.id);
+    if (!ctx) return;
+    ctx.settings = { ...DEFAULT_SETTINGS, ...ev.payload.settings };
+    // Force re-render with new settings
+    this.lastImages.delete(ev.action.id);
+  }
+
   override async onWillDisappear(ev: WillDisappearEvent<OneRowSettings>): Promise<void> {
     this.contexts.delete(ev.action.id);
     this.lastImages.delete(ev.action.id);
@@ -126,17 +138,28 @@ export class VUMeterOneRow extends SingletonAction<OneRowSettings> {
       const theme = THEMES[ctx.settings.theme] || THEMES.classic;
       const segIdx = ctx.column - this.minColumn;
       const isHorizontal = ctx.settings.orientation === "horizontal";
+      const isSolid = ctx.settings.displayStyle === "solid";
 
       const segStart = segIdx / this.totalSegments;
       const segEnd = (segIdx + 1) / this.totalSegments;
 
-      const leftFill = calcFill(levels.left, segStart, segEnd);
-      const rightFill = calcFill(levels.right, segStart, segEnd);
-      const peakL = ctx.settings.showPeaks ? calcPeak(levels.peakLeft, segStart, segEnd) : -1;
-      const peakR = ctx.settings.showPeaks ? calcPeak(levels.peakRight, segStart, segEnd) : -1;
+      let img: string;
 
-      const renderFn = isHorizontal ? renderHorizontalSplitKeyBar : renderSplitKeyBar;
-      const img = renderFn(leftFill, rightFill, segIdx, this.totalSegments, theme, peakL, peakR);
+      if (isSolid) {
+        const leftLit = levels.left >= segEnd || levels.left > segStart;
+        const rightLit = levels.right >= segEnd || levels.right > segStart;
+        const leftIsPeak = ctx.settings.showPeaks && levels.peakLeft >= segStart && levels.peakLeft < segEnd;
+        const rightIsPeak = ctx.settings.showPeaks && levels.peakRight >= segStart && levels.peakRight < segEnd;
+        img = renderSolidSplitKeyBar(leftLit, rightLit, segIdx, this.totalSegments, theme, !leftLit && leftIsPeak, !rightLit && rightIsPeak);
+      } else {
+        const leftFill = calcFill(levels.left, segStart, segEnd);
+        const rightFill = calcFill(levels.right, segStart, segEnd);
+        const peakL = ctx.settings.showPeaks ? calcPeak(levels.peakLeft, segStart, segEnd) : -1;
+        const peakR = ctx.settings.showPeaks ? calcPeak(levels.peakRight, segStart, segEnd) : -1;
+
+        const renderFn = isHorizontal ? renderHorizontalSplitKeyBar : renderSplitKeyBar;
+        img = renderFn(leftFill, rightFill, segIdx, this.totalSegments, theme, peakL, peakR);
+      }
 
       const lastImg = this.lastImages.get(id);
       if (img !== lastImg) {

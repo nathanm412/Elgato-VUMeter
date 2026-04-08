@@ -19,6 +19,8 @@
 import { ColorTheme, getSegmentColor, dimColor, hexToRgb } from "../utils/color";
 import { KEY_SIZE } from "../utils/constants";
 
+export type DisplayStyle = "gradient" | "solid";
+
 const SIZE = KEY_SIZE;
 const PADDING = 6;
 const BAR_RADIUS = 4;
@@ -350,6 +352,97 @@ export function renderHorizontalSplitKeyBar(
   // Channel labels on left edge
   svg += `<text x="${barLeft + 4}" y="${topY + halfHeight / 2 + 3}" font-size="8" font-family="monospace" fill="${theme.text}" opacity="0.6">L</text>`;
   svg += `<text x="${barLeft + 4}" y="${bottomY + halfHeight / 2 + 3}" font-size="8" font-family="monospace" fill="${theme.text}" opacity="0.6">R</text>`;
+
+  svg += `</svg>`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+}
+
+/**
+ * Render a solid-color key for the "Classic" display style.
+ * The key is either fully lit in its segment color or fully dark (black).
+ * Matches the original Python script's binary on/off per-key approach.
+ */
+export function renderSolidKeyBar(
+  isLit: boolean,
+  segmentIdx: number,
+  totalSegments: number,
+  theme: ColorTheme,
+  isPeak = false,
+): string {
+  const color = getSegmentColor(theme, segmentIdx, totalSegments);
+  const rgb = hexToRgb(color);
+
+  let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${SIZE}" height="${SIZE}" viewBox="0 0 ${SIZE} ${SIZE}">`;
+
+  // Background
+  svg += `<rect width="${SIZE}" height="${SIZE}" fill="${theme.background}" rx="8"/>`;
+
+  if (isLit) {
+    // Fully lit key in segment color
+    svg += `<rect x="${PADDING}" y="${PADDING}" width="${SIZE - PADDING * 2}" height="${SIZE - PADDING * 2}" fill="${color}" rx="${BAR_RADIUS}"/>`;
+    // Subtle inner glow
+    svg += `<rect x="${PADDING}" y="${PADDING}" width="${SIZE - PADDING * 2}" height="${SIZE - PADDING * 2}" fill="none" stroke="rgba(${rgb.r},${rgb.g},${rgb.b},0.4)" stroke-width="2" rx="${BAR_RADIUS}"/>`;
+  } else if (isPeak) {
+    // Peak indicator: dimmed version of the segment color
+    const dimmed = dimColor(color, 0.3);
+    svg += `<rect x="${PADDING}" y="${PADDING}" width="${SIZE - PADDING * 2}" height="${SIZE - PADDING * 2}" fill="${dimmed}" rx="${BAR_RADIUS}"/>`;
+    svg += `<rect x="${PADDING}" y="${PADDING}" width="${SIZE - PADDING * 2}" height="${SIZE - PADDING * 2}" fill="none" stroke="${theme.peak}" stroke-width="1.5" rx="${BAR_RADIUS}" opacity="0.7"/>`;
+  } else {
+    // Dark/off key
+    svg += `<rect x="${PADDING}" y="${PADDING}" width="${SIZE - PADDING * 2}" height="${SIZE - PADDING * 2}" fill="${theme.inactive}" rx="${BAR_RADIUS}"/>`;
+  }
+
+  svg += `</svg>`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+}
+
+/**
+ * Render a solid-color split L/R key for One-Row mode.
+ * Each half is either fully lit or fully dark.
+ */
+export function renderSolidSplitKeyBar(
+  leftLit: boolean,
+  rightLit: boolean,
+  segmentIdx: number,
+  totalSegments: number,
+  theme: ColorTheme,
+  leftIsPeak = false,
+  rightIsPeak = false,
+): string {
+  const color = getSegmentColor(theme, segmentIdx, totalSegments);
+  const dimmed = dimColor(color, 0.3);
+  const halfWidth = (SIZE - PADDING * 2 - 4) / 2;
+  const barHeight = SIZE - PADDING * 2;
+  const barTop = PADDING;
+  const leftX = PADDING;
+  const rightX = PADDING + halfWidth + 4;
+
+  let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${SIZE}" height="${SIZE}" viewBox="0 0 ${SIZE} ${SIZE}">`;
+  svg += `<rect width="${SIZE}" height="${SIZE}" fill="${theme.background}" rx="8"/>`;
+
+  // Left half
+  if (leftLit) {
+    svg += `<rect x="${leftX}" y="${barTop}" width="${halfWidth}" height="${barHeight}" fill="${color}" rx="${BAR_RADIUS}"/>`;
+  } else if (leftIsPeak) {
+    svg += `<rect x="${leftX}" y="${barTop}" width="${halfWidth}" height="${barHeight}" fill="${dimmed}" rx="${BAR_RADIUS}"/>`;
+    svg += `<rect x="${leftX}" y="${barTop}" width="${halfWidth}" height="${barHeight}" fill="none" stroke="${theme.peak}" stroke-width="1.5" rx="${BAR_RADIUS}" opacity="0.7"/>`;
+  } else {
+    svg += `<rect x="${leftX}" y="${barTop}" width="${halfWidth}" height="${barHeight}" fill="${theme.inactive}" rx="${BAR_RADIUS}"/>`;
+  }
+
+  // Right half
+  if (rightLit) {
+    svg += `<rect x="${rightX}" y="${barTop}" width="${halfWidth}" height="${barHeight}" fill="${color}" rx="${BAR_RADIUS}"/>`;
+  } else if (rightIsPeak) {
+    svg += `<rect x="${rightX}" y="${barTop}" width="${halfWidth}" height="${barHeight}" fill="${dimmed}" rx="${BAR_RADIUS}"/>`;
+    svg += `<rect x="${rightX}" y="${barTop}" width="${halfWidth}" height="${barHeight}" fill="none" stroke="${theme.peak}" stroke-width="1.5" rx="${BAR_RADIUS}" opacity="0.7"/>`;
+  } else {
+    svg += `<rect x="${rightX}" y="${barTop}" width="${halfWidth}" height="${barHeight}" fill="${theme.inactive}" rx="${BAR_RADIUS}"/>`;
+  }
+
+  // Channel labels
+  svg += `<text x="${leftX + halfWidth / 2}" y="${SIZE - 1}" text-anchor="middle" font-size="8" font-family="monospace" fill="${theme.text}" opacity="0.6">L</text>`;
+  svg += `<text x="${rightX + halfWidth / 2}" y="${SIZE - 1}" text-anchor="middle" font-size="8" font-family="monospace" fill="${theme.text}" opacity="0.6">R</text>`;
 
   svg += `</svg>`;
   return `data:image/svg+xml,${encodeURIComponent(svg)}`;

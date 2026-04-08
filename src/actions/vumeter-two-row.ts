@@ -14,12 +14,14 @@
 
 import streamDeck, {
 	action,
+	DidReceiveSettingsEvent,
 	KeyDownEvent,
 	SingletonAction,
 	WillAppearEvent,
 	WillDisappearEvent,
 } from "@elgato/streamdeck";
-import {renderKeyBar, renderHorizontalKeyBar} from "../rendering/key-renderer";
+import {renderKeyBar, renderHorizontalKeyBar, renderSolidKeyBar} from "../rendering/key-renderer";
+import type {DisplayStyle} from "../rendering/key-renderer";
 import {AudioLevels} from "../audio/audio-capture";
 import {THEMES, THEME_ORDER} from "../utils/color";
 import type {JsonValue} from "@elgato/utils";
@@ -29,6 +31,7 @@ interface TwoRowSettings {
 	showPeaks: boolean;
 	peakHold: boolean;
 	orientation: "vertical" | "horizontal";
+	displayStyle: DisplayStyle;
 	[key: string]: JsonValue;
 }
 
@@ -37,6 +40,7 @@ const DEFAULT_SETTINGS: TwoRowSettings = {
 	showPeaks: true,
 	peakHold: true,
 	orientation: "vertical",
+	displayStyle: "gradient",
 };
 
 interface ActionContext {
@@ -52,12 +56,14 @@ export class VUMeterTwoRow extends SingletonAction<TwoRowSettings> {
 	private lastImages: Map<string, string> = new Map();
 	private totalSegments = 1;
 	private minColumn = 0;
+	private minRow = 0;
 	private isSingleRowMode = false;
 
 	private computeSegmentInfo(): void {
 		if (this.contexts.size === 0) {
 			this.totalSegments = 1;
 			this.minColumn = 0;
+			this.minRow = 0;
 			this.isSingleRowMode = false;
 			return;
 		}
@@ -71,6 +77,7 @@ export class VUMeterTwoRow extends SingletonAction<TwoRowSettings> {
 
 		const oldSegments = this.totalSegments;
 		this.minColumn = Math.min(...columns);
+		this.minRow = Math.min(...rows);
 		this.totalSegments = Math.max(...columns) - this.minColumn + 1;
 		this.isSingleRowMode = rows.size === 1;
 
@@ -102,6 +109,14 @@ export class VUMeterTwoRow extends SingletonAction<TwoRowSettings> {
 		await ev.action.setImage(img);
 	}
 
+	override async onDidReceiveSettings(ev: DidReceiveSettingsEvent<TwoRowSettings>): Promise<void> {
+		const ctx = this.contexts.get(ev.action.id);
+		if (!ctx) return;
+		ctx.settings = { ...DEFAULT_SETTINGS, ...ev.payload.settings };
+		// Force re-render with new settings
+		this.lastImages.delete(ev.action.id);
+	}
+
 	override async onWillDisappear(ev: WillDisappearEvent<TwoRowSettings>): Promise<void> {
 		this.contexts.delete(ev.action.id);
 		this.lastImages.delete(ev.action.id);
@@ -129,6 +144,7 @@ export class VUMeterTwoRow extends SingletonAction<TwoRowSettings> {
 			const theme = THEMES[ctx.settings.theme] || THEMES.classic;
 			const segIdx = ctx.column - this.minColumn;
 			const isHorizontal = ctx.settings.orientation === "horizontal";
+			const isSolid = ctx.settings.displayStyle === "solid";
 
 			// In single-row horizontal mode, use mono (louder channel)
 			let channelLevel: number;
@@ -137,7 +153,8 @@ export class VUMeterTwoRow extends SingletonAction<TwoRowSettings> {
 				channelLevel = Math.max(levels.left, levels.right);
 				channelPeak = Math.max(levels.peakLeft, levels.peakRight);
 			} else {
-				const isLeftChannel = ctx.row === 0;
+				// Use relative row position: top row (minRow) = left channel
+				const isLeftChannel = ctx.row === this.minRow;
 				channelLevel = isLeftChannel ? levels.left : levels.right;
 				channelPeak = isLeftChannel ? levels.peakLeft : levels.peakRight;
 			}
@@ -146,23 +163,32 @@ export class VUMeterTwoRow extends SingletonAction<TwoRowSettings> {
 			const segStart = segIdx / this.totalSegments;
 			const segEnd = (segIdx + 1) / this.totalSegments;
 
-			let fillLevel: number;
-			if (channelLevel >= segEnd) {
-				fillLevel = 1.0;
-			} else if (channelLevel > segStart) {
-				fillLevel = (channelLevel - segStart) / (segEnd - segStart);
+			let img: string;
+
+			if (isSolid) {
+				// Solid mode: binary on/off per key
+				const isLit = channelLevel >= segEnd || (channelLevel > segStart);
+				const isPeak = ctx.settings.showPeaks && channelPeak >= segStart && channelPeak < segEnd;
+				img = renderSolidKeyBar(isLit, segIdx, this.totalSegments, theme, !isLit && isPeak);
 			} else {
-				fillLevel = 0;
-			}
+				// Gradient mode: smooth fill
+				let fillLevel: number;
+				if (channelLevel >= segEnd) {
+					fillLevel = 1.0;
+				} else if (channelLevel > segStart) {
+					fillLevel = (channelLevel - segStart) / (segEnd - segStart);
+				} else {
+					fillLevel = 0;
+				}
 
-			// Peak position relative to this key
-			let peakLevel = -1;
-			if (ctx.settings.showPeaks && channelPeak >= segStart && channelPeak < segEnd) {
-				peakLevel = (channelPeak - segStart) / (segEnd - segStart);
-			}
+				let peakLevel = -1;
+				if (ctx.settings.showPeaks && channelPeak >= segStart && channelPeak < segEnd) {
+					peakLevel = (channelPeak - segStart) / (segEnd - segStart);
+				}
 
-			const renderFn = isHorizontal ? renderHorizontalKeyBar : renderKeyBar;
-			const img = renderFn(fillLevel, segIdx, this.totalSegments, theme, peakLevel, true);
+				const renderFn = isHorizontal ? renderHorizontalKeyBar : renderKeyBar;
+				img = renderFn(fillLevel, segIdx, this.totalSegments, theme, peakLevel, true);
+			}
 
 			// Only update if the image actually changed (reduces USB traffic)
 			const lastImg = this.lastImages.get(id);

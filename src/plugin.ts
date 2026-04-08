@@ -31,6 +31,7 @@ const audioCapture = new AudioCapture();
 touchAction.setCallbacks(
   (delta) => audioCapture.adjustSensitivity(delta),
   () => audioCapture.resetPeaks(),
+  () => audioCapture.toggleSensitivityMode(),
 );
 
 // Rate limiter for display updates

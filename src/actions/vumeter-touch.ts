@@ -17,6 +17,7 @@ import streamDeck, {
 	DialAction,
 	DialDownEvent,
 	DialRotateEvent,
+	DidReceiveSettingsEvent,
 	SingletonAction,
 	TouchTapEvent,
 	WillAppearEvent,
@@ -52,10 +53,16 @@ export class VUMeterTouch extends SingletonAction<TouchSettings> {
 	private lastImages: Map<string, string> = new Map();
 	private onSensitivityChange: ((delta: number) => void) | null = null;
 	private onResetPeaks: (() => void) | null = null;
+	private onToggleSensitivityMode: (() => void) | null = null;
 
-	setCallbacks(onSensitivity: (delta: number) => void, onReset: () => void): void {
+	setCallbacks(
+		onSensitivity: (delta: number) => void,
+		onReset: () => void,
+		onToggleMode: () => void,
+	): void {
 		this.onSensitivityChange = onSensitivity;
 		this.onResetPeaks = onReset;
+		this.onToggleSensitivityMode = onToggleMode;
 	}
 
 	override async onWillAppear(ev: WillAppearEvent<TouchSettings>): Promise<void> {
@@ -70,6 +77,13 @@ export class VUMeterTouch extends SingletonAction<TouchSettings> {
 		this.contexts.set(ev.action.id, ctx);
 	}
 
+	override async onDidReceiveSettings(ev: DidReceiveSettingsEvent<TouchSettings>): Promise<void> {
+		const ctx = this.contexts.get(ev.action.id);
+		if (!ctx) return;
+		ctx.settings = { ...DEFAULT_SETTINGS, ...ev.payload.settings };
+		this.lastImages.delete(ev.action.id);
+	}
+
 	override async onWillDisappear(ev: WillDisappearEvent<TouchSettings>): Promise<void> {
 		this.contexts.delete(ev.action.id);
 	}
@@ -80,12 +94,9 @@ export class VUMeterTouch extends SingletonAction<TouchSettings> {
 		this.onSensitivityChange?.(delta);
 	}
 
-	override async onDialDown(ev: DialDownEvent<TouchSettings>): Promise<void> {
-		// Toggle peak hold
-		const ctx = this.contexts.get(ev.action.id);
-		if (!ctx) return;
-		ctx.settings.showPeaks = !ctx.settings.showPeaks;
-		await ev.action.setSettings(ctx.settings);
+	override async onDialDown(_ev: DialDownEvent<TouchSettings>): Promise<void> {
+		// Toggle between auto and manual sensitivity modes
+		this.onToggleSensitivityMode?.();
 	}
 
 	override async onTouchTap(ev: TouchTapEvent<TouchSettings>): Promise<void> {
