@@ -31,14 +31,16 @@ interface OneRowSettings {
   showPeaks: boolean;
   orientation: "vertical" | "horizontal";
   displayStyle: DisplayStyle;
+  sensitivityTuning: string;
   [key: string]: JsonValue;
 }
 
 const DEFAULT_SETTINGS: OneRowSettings = {
   theme: "classic",
   showPeaks: true,
-  orientation: "vertical",
+  orientation: "horizontal",
   displayStyle: "gradient",
+  sensitivityTuning: "default",
 };
 
 interface ActionContext {
@@ -51,6 +53,11 @@ interface ActionContext {
 export class VUMeterOneRow extends SingletonAction<OneRowSettings> {
   private contexts: Map<string, ActionContext> = new Map();
   private lastImages: Map<string, string> = new Map();
+  private onSettingsChanged: ((settings: OneRowSettings) => void) | null = null;
+
+  setOnSettingsChanged(cb: (settings: OneRowSettings) => void): void {
+    this.onSettingsChanged = cb;
+  }
   private totalSegments = 1;
   private minColumn = 0;
 
@@ -98,9 +105,28 @@ export class VUMeterOneRow extends SingletonAction<OneRowSettings> {
   override async onDidReceiveSettings(ev: DidReceiveSettingsEvent<OneRowSettings>): Promise<void> {
     const ctx = this.contexts.get(ev.action.id);
     if (!ctx) return;
-    ctx.settings = { ...DEFAULT_SETTINGS, ...ev.payload.settings };
-    // Force re-render with new settings
-    this.lastImages.delete(ev.action.id);
+    const newSettings = { ...DEFAULT_SETTINGS, ...ev.payload.settings };
+    ctx.settings = newSettings;
+
+    // Global sync: apply settings to all sibling contexts
+    for (const [otherId, otherCtx] of this.contexts) {
+      if (otherId === ev.action.id) continue;
+      otherCtx.settings = { ...newSettings };
+      try {
+        const action = streamDeck.actions.find((a) => a.id === otherId);
+        if (action) {
+          await action.setSettings(newSettings);
+        }
+      } catch {
+        // Action may have been removed
+      }
+    }
+
+    // Force full re-render
+    this.lastImages.clear();
+
+    // Notify plugin of settings change (e.g., sensitivity tuning)
+    this.onSettingsChanged?.(newSettings);
   }
 
   override async onWillDisappear(ev: WillDisappearEvent<OneRowSettings>): Promise<void> {

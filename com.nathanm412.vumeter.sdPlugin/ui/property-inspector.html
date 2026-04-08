@@ -121,8 +121,8 @@
     <div class="row">
       <label for="orientation">Bar Direction</label>
       <select id="orientation">
-        <option value="vertical">Vertical (bottom to top)</option>
         <option value="horizontal">Horizontal (left to right)</option>
+        <option value="vertical">Vertical (bottom to top)</option>
       </select>
     </div>
   </div>
@@ -149,7 +149,15 @@
   <div class="section">
     <div class="section-title">Audio Sensitivity</div>
     <div class="row">
-      <label>Sensitivity adapts automatically to your audio output level (auto-gain). On the touch display, rotate the dial to switch to manual sensitivity, and press the dial to toggle back to auto mode.</label>
+      <label for="sensitivityTuning">Auto Sensitivity</label>
+      <select id="sensitivityTuning">
+        <option value="low">Low (-15%)</option>
+        <option value="default" selected>Default</option>
+        <option value="high">High (+15%)</option>
+      </select>
+    </div>
+    <div class="row">
+      <label>Auto-gain adapts to your audio level. On the touch display, rotate the dial for manual control, press to toggle auto/manual.</label>
     </div>
   </div>
 
@@ -204,8 +212,9 @@
     function loadSettings() {
       document.getElementById("theme").value = settings.theme || "classic";
       document.getElementById("showPeaks").checked = settings.showPeaks !== false;
-      document.getElementById("orientation").value = settings.orientation || "vertical";
+      document.getElementById("orientation").value = settings.orientation || "horizontal";
       document.getElementById("displayStyle").value = settings.displayStyle || "gradient";
+      document.getElementById("sensitivityTuning").value = settings.sensitivityTuning || "default";
       updateThemePreview();
 
       // Hide orientation and display style for touch action (not applicable)
@@ -219,6 +228,7 @@
       settings.showPeaks = document.getElementById("showPeaks").checked;
       settings.orientation = document.getElementById("orientation").value;
       settings.displayStyle = document.getElementById("displayStyle").value;
+      settings.sensitivityTuning = document.getElementById("sensitivityTuning").value;
 
       if (websocket && websocket.readyState === WebSocket.OPEN) {
         websocket.send(JSON.stringify({
@@ -250,6 +260,7 @@
     document.getElementById("showPeaks").addEventListener("change", saveSettings);
     document.getElementById("orientation").addEventListener("change", saveSettings);
     document.getElementById("displayStyle").addEventListener("change", saveSettings);
+    document.getElementById("sensitivityTuning").addEventListener("change", saveSettings);
 
     // Initialize preview
     updateThemePreview();

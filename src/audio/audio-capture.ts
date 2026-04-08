@@ -44,6 +44,7 @@ export class AudioCapture extends EventEmitter {
   // Sensitivity mode
   private sensitivityMode: SensitivityMode = "auto";
   private manualSensitivity = 1.0; // 0.1 to 10.0, used when mode is "manual"
+  private sensitivityTuning = 1.0; // multiplier for auto mode: 0.85 (low), 1.0 (default), 1.15 (high)
 
   // Smoothed display values
   private displayLeft = 0;
@@ -418,7 +419,7 @@ export class AudioCapture extends EventEmitter {
     // Calculate sensitivity based on mode
     if (this.sensitivityMode === "auto") {
       const maxHistory = Math.max(...this.history, MIN_SENSITIVITY);
-      this.sensitivity = 1.0 / maxHistory;
+      this.sensitivity = (1.0 / maxHistory) * this.sensitivityTuning;
     } else {
       this.sensitivity = this.manualSensitivity;
     }
@@ -501,6 +502,18 @@ export class AudioCapture extends EventEmitter {
       this.history = [];
     }
     this.emit("sensitivityChange", this.sensitivityMode, this.manualSensitivity);
+  }
+
+  /**
+   * Set the auto-sensitivity tuning level.
+   * "low" = 0.85x (less sensitive), "default" = 1.0x, "high" = 1.15x (more sensitive)
+   */
+  setSensitivityTuning(tuning: string): void {
+    switch (tuning) {
+      case "low": this.sensitivityTuning = 0.85; break;
+      case "high": this.sensitivityTuning = 1.15; break;
+      default: this.sensitivityTuning = 1.0; break;
+    }
   }
 
   getSensitivityMode(): SensitivityMode {
