@@ -56,6 +56,10 @@ Jest with `ts-jest` preset. Tests live alongside source files (`*.test.ts`). Cur
 
 ESLint flat config (`eslint.config.mjs`) with `@typescript-eslint`. Unused vars prefixed with `_` are allowed. Only `.ts` files in `src/` are linted; `.js` files are ignored.
 
+## Pull Requests
+
+Always create pull requests against `nathanm412/Elgato-VUMeter`, not any upstream repository it may have been forked from.
+
 ## CI
 
 GitHub Actions (`.github/workflows/ci.yml`) runs on pushes to `main`, `develop`, `feature/**`, `claude/**` and PRs to `main`. Pipeline: lint + typecheck -> tests -> build -> package (main/tags only) -> release (version tags only). Releases are created by pushing a `v*` tag.
