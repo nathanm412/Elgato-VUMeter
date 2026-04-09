@@ -24,7 +24,9 @@ A real-time stereo audio VU meter plugin for Elgato Stream Deck devices. Feature
 
 ## Display Modes
 
-### Two-Row Mode
+The keypad action supports two modes, selectable from the Property Inspector:
+
+### Two-Row Mode (default)
 
 Uses two rows of keys — top row for Left channel, bottom row for Right:
 
@@ -35,7 +37,7 @@ Uses two rows of keys — top row for Left channel, bottom row for Right:
 
 Place any number of keys per row — the meter dynamically scales its segment count to match. Each key renders a gradient bar with continuous fill, giving you far more resolution than a simple on/off display.
 
-**Single-row horizontal mode:** If all Two-Row keys are placed in one row with horizontal orientation, the meter automatically switches to mono mode, combining both channels into a single left-to-right display spanning all keys.
+**Single-row horizontal mode:** If all keys are placed in one row with horizontal orientation, the meter automatically switches to mono mode, combining both channels into a single left-to-right display spanning all keys.
 
 ### One-Row Mode
 
@@ -64,11 +66,14 @@ Open the property inspector for any VU Meter action to configure:
 
 | Setting | Options | Description |
 |---------|---------|-------------|
+| **Mode** | Two Row, One Row | Display layout (keypad action only) |
 | **Theme** | Classic, Cool Blue, Synthwave, Warm | Color scheme for the meter bars |
 | **Orientation** | Vertical, Horizontal | Bar fill direction (key actions only) |
+| **Display Style** | Gradient, Solid | Smooth fills or classic on/off segments |
 | **Show Peaks** | On/Off | Peak hold indicator lines |
+| **Sensitivity** | 0.50x – 2.00x slider | Auto-sensitivity tuning multiplier |
 
-You can also press any VU meter key to quickly cycle through themes.
+You can also press any VU meter key to quickly cycle through themes. Theme changes sync across all active actions.
 
 ## Color Themes
 
@@ -137,8 +142,8 @@ Then double-click the generated `com.nathanm412.vumeter.streamDeckPlugin` file.
 src/
   plugin.ts                   # Main entry point & orchestrator
   actions/
-    vumeter-two-row.ts        # Two-row display mode (dynamic key count)
-    vumeter-one-row.ts        # One-row split L/R mode (dynamic key count)
+    vumeter-two-row.ts        # Unified keypad action (two-row + one-row modes)
+    vumeter-one-row.ts        # Legacy one-row compat (hidden from action list)
     vumeter-touch.ts          # Touch strip display mode
   audio/
     audio-capture.ts          # Cross-platform audio capture
@@ -158,8 +163,7 @@ src/
 ```
 AudioCapture  --> emits 'levels' events at ~20fps
     |
-    |-- VUMeterTwoRow.updateLevels()  -> renders gradient key SVGs
-    |-- VUMeterOneRow.updateLevels()  -> renders split L/R key SVGs
+    |-- VUMeterKeypad.updateLevels()  -> renders key SVGs (two-row/one-row modes)
     '-- VUMeterTouch.updateLevels()   -> renders touch strip SVGs
 ```
 

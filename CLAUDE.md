@@ -28,13 +28,13 @@ Event-driven pipeline with a single shared `AudioCapture` instance:
 ```
 AudioCapture  ──> emits 'levels' events at ~20fps
     │
-    ├──> VUMeterTwoRow.updateLevels()  (multi-key gradient bars)
-    ├──> VUMeterOneRow.updateLevels()  (split L/R per key)
+    ├──> VUMeterKeypad.updateLevels()  (two-row/one-row key modes)
+    ├──> VUMeterOneRow.updateLevels()  (legacy compat, hidden)
     └──> VUMeterTouch.updateLevels()   (800x100 touch strip)
 ```
 
-- **`src/plugin.ts`** — Entry point & orchestrator. Creates a single `AudioCapture`, rate-limits updates via `scheduleUpdate()`, and distributes levels to all active action instances concurrently.
-- **`src/actions/`** — Three action classes, one per display mode. Each dynamically computes segment count from the coordinates of active keys. Actions register with the Stream Deck SDK and handle key press / encoder events.
+- **`src/plugin.ts`** — Entry point & orchestrator. Creates a single `AudioCapture`, rate-limits updates via `scheduleUpdate()`, distributes levels to all active actions, and mediates cross-action theme sync.
+- **`src/actions/`** — `VUMeterKeypad` (consolidated keypad action with two-row/one-row mode dropdown), `VUMeterOneRow` (legacy compat, hidden from action list), and `VUMeterTouch` (encoder touch strip). Each dynamically computes segment count from active key coordinates.
 - **`src/audio/audio-capture.ts`** — Cross-platform audio capture. Uses platform-specific helper scripts: WASAPI loopback (PowerShell) on Windows, CoreAudio (shell script) on macOS. Emits normalized `AudioLevels` events.
 - **`src/rendering/`** — SVG generators. `key-renderer.ts` renders gradient fill bars (vertical + horizontal orientation). `touch-renderer.ts` renders the full-width touch strip with dB scale markings.
 - **`src/utils/color.ts`** — Four color themes (Classic, Cool Blue, Synthwave, Warm) with gradient utilities.
@@ -65,3 +65,7 @@ Always create pull requests against `nathanm412/Elgato-VUMeter`, not any upstrea
 GitHub Actions (`.github/workflows/ci.yml`) runs on pushes to `main`, `develop`, `feature/**`, `claude/**` and PRs to `main`. Pipeline: lint + typecheck -> tests -> build -> package (main/tags only) -> release (version tags only).
 
 A second workflow (`.github/workflows/release-on-merge.yml`) automates releases when a PR with a `Pre-Release` or `New-Release` label is merged to `main`. `Pre-Release` creates a pre-release with a date+SHA tag; `New-Release` creates a full release using the version from `package.json`. Releases can also be created manually by pushing a `v*` tag.
+
+## Documentation & Hover Text
+
+When changing functionality, always update the corresponding hover text / tooltips in `manifest.json` (Tooltip, TriggerDescription), source file doc comments, property inspector tips, and README. Mismatched documentation confuses users and is easy to miss.
