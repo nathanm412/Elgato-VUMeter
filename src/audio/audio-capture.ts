@@ -34,7 +34,12 @@ export interface AudioLevels {
 
 export type SensitivityMode = "auto" | "manual";
 
-export type AudioCaptureState = "running" | "error" | "recovering" | "stopped";
+export type AudioCaptureState = "running" | "error" | "recovering" | "stopped" | "simulated";
+
+export interface AudioCaptureError {
+  type: "permission" | "device" | "spawn" | "unknown";
+  message: string;
+}
 
 export class AudioCapture extends EventEmitter {
   private process: ChildProcess | null = null;
@@ -76,6 +81,9 @@ export class AudioCapture extends EventEmitter {
   private devicePollTimer: ReturnType<typeof setInterval> | null = null;
   private currentDeviceName = "";
   private readonly DEVICE_POLL_INTERVAL_MS = 3000;
+
+  // Last error for diagnostics
+  private lastError: AudioCaptureError | null = null;
 
   start(): void {
     if (this.running) return;
@@ -123,6 +131,52 @@ export class AudioCapture extends EventEmitter {
     return this.state;
   }
 
+  getLastError(): AudioCaptureError | null {
+    return this.lastError;
+  }
+
+  /**
+   * Classify and emit an error, then update state.
+   */
+  private emitError(message: string, errObj?: unknown): void {
+    const type = AudioCapture.classifyError(message, errObj);
+    this.lastError = { type, message };
+    this.setState("error");
+    this.emit("error", this.lastError);
+  }
+
+  /**
+   * Classify an error based on the message and the underlying error object.
+   */
+  private static classifyError(message: string, errObj?: unknown): AudioCaptureError["type"] {
+    const combined = `${message} ${errObj instanceof Error ? errObj.message : ""}`.toLowerCase();
+    if (
+      combined.includes("eacces") ||
+      combined.includes("permission") ||
+      combined.includes("executionpolicy") ||
+      combined.includes("not be loaded because running scripts is disabled") ||
+      combined.includes("operation not permitted")
+    ) {
+      return "permission";
+    }
+    if (
+      combined.includes("no audio") ||
+      combined.includes("device") ||
+      combined.includes("blackhole") ||
+      combined.includes("loopback")
+    ) {
+      return "device";
+    }
+    if (
+      combined.includes("enoent") ||
+      combined.includes("spawn") ||
+      combined.includes("not found")
+    ) {
+      return "spawn";
+    }
+    return "unknown";
+  }
+
   /**
    * Schedule a retry with exponential backoff.
    * Backoff: 1s, 2s, 4s, capped at 5s.
@@ -134,7 +188,7 @@ export class AudioCapture extends EventEmitter {
     if (this.retryCount > this.MAX_RETRIES) {
       console.error("Audio capture: max retries exceeded, falling back to simulation");
       this.retryCount = 0;
-      this.startSimulated();
+      this.fallbackToSimulation("Max retries exceeded — audio capture unavailable");
       return;
     }
 
@@ -158,7 +212,7 @@ export class AudioCapture extends EventEmitter {
     const helperPath = path.join(__dirname, "..", "helpers", "audio-capture-win.ps1");
     if (!fs.existsSync(helperPath)) {
       console.warn("Windows audio helper not found, falling back to simulation");
-      this.startSimulated();
+      this.fallbackToSimulation("Windows audio helper script not found");
       return;
     }
 
@@ -171,7 +225,7 @@ export class AudioCapture extends EventEmitter {
       ]);
     } catch (err) {
       console.error("Failed to spawn Windows audio helper:", err);
-      this.setState("error");
+      this.emitError("Failed to spawn PowerShell audio helper", err);
       this.scheduleRetry(() => this.startWindows());
       return;
     }
@@ -199,13 +253,21 @@ export class AudioCapture extends EventEmitter {
     });
 
     this.process.stderr?.on("data", (data: Buffer) => {
-      console.warn("Audio helper stderr:", data.toString().trim());
+      const msg = data.toString().trim();
+      console.warn("Audio helper stderr:", msg);
+      // Detect permission or execution policy errors from PowerShell
+      if (AudioCapture.classifyError(msg) === "permission") {
+        console.error("Audio capture: permission error detected, falling back to simulation");
+        this.process?.kill();
+        this.process = null;
+        this.fallbackToSimulation(`Permission error: ${msg}`);
+      }
     });
 
     this.process.on("error", (err) => {
       console.error("Audio capture process error:", err.message);
       this.process = null;
-      this.setState("error");
+      this.emitError("Audio capture process failed to start", err);
       this.scheduleRetry(() => this.startWindows());
     });
 
@@ -213,7 +275,7 @@ export class AudioCapture extends EventEmitter {
       this.process = null;
       if (this.running) {
         console.log(`Audio capture process exited (code ${code}), scheduling retry...`);
-        this.setState("error");
+        this.emitError(`Audio capture process exited with code ${code}`);
         this.scheduleRetry(() => this.startWindows());
       }
     });
@@ -226,15 +288,22 @@ export class AudioCapture extends EventEmitter {
     const helperPath = path.join(__dirname, "..", "helpers", "audio-capture-mac.sh");
     if (!fs.existsSync(helperPath)) {
       console.warn("macOS audio helper not found, falling back to simulation");
-      this.startSimulated();
+      this.fallbackToSimulation("macOS audio helper script not found");
       return;
+    }
+
+    // Ensure the helper script is executable
+    try {
+      fs.chmodSync(helperPath, 0o755);
+    } catch (err) {
+      console.warn("Could not set execute permission on macOS helper:", err);
     }
 
     try {
       this.process = spawn("bash", [helperPath]);
     } catch (err) {
       console.error("Failed to spawn macOS audio helper:", err);
-      this.setState("error");
+      this.emitError("Failed to spawn macOS audio helper", err);
       this.scheduleRetry(() => this.startMacOS());
       return;
     }
@@ -262,13 +331,21 @@ export class AudioCapture extends EventEmitter {
     });
 
     this.process.stderr?.on("data", (data: Buffer) => {
-      console.warn("Audio helper stderr:", data.toString().trim());
+      const msg = data.toString().trim();
+      console.warn("Audio helper stderr:", msg);
+      // Detect permission errors from the shell script
+      if (AudioCapture.classifyError(msg) === "permission") {
+        console.error("Audio capture: permission error detected, falling back to simulation");
+        this.process?.kill();
+        this.process = null;
+        this.fallbackToSimulation(`Permission error: ${msg}`);
+      }
     });
 
     this.process.on("error", (err) => {
       console.error("Audio capture process error:", err.message);
       this.process = null;
-      this.setState("error");
+      this.emitError("Audio capture process failed to start", err);
       this.scheduleRetry(() => this.startMacOS());
     });
 
@@ -276,7 +353,7 @@ export class AudioCapture extends EventEmitter {
       this.process = null;
       if (this.running) {
         console.log(`Audio capture process exited (code ${code}), scheduling retry...`);
-        this.setState("error");
+        this.emitError(`Audio capture process exited with code ${code}`);
         this.scheduleRetry(() => this.startMacOS());
       }
     });
@@ -372,10 +449,21 @@ export class AudioCapture extends EventEmitter {
   }
 
   /**
+   * Fall back to simulated audio with an error message.
+   * Emits an error event so consumers know real capture is unavailable.
+   */
+  private fallbackToSimulation(reason: string): void {
+    this.emitError(reason);
+    console.warn(`Audio capture falling back to simulation: ${reason}`);
+    this.startSimulated();
+  }
+
+  /**
    * Simulated audio source for development and testing.
    * Generates realistic-looking VU meter activity.
    */
   private startSimulated(): void {
+    this.setState("simulated");
     console.log("Using simulated audio source");
     let phase = 0;
     const baseFreqL = 0.7;

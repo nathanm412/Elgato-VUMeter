@@ -8,10 +8,12 @@
       "Bash(gh issue status:*)",
       "Bash(gh issue view:*)",
       "Bash(gh label:*)",
-      "Bash(echo \"exit: $?\")"
+      "Bash(echo \"exit: $?\")",
+      "Bash(npm run:*)",
+      "Bash(npm test:*)"
     ],
     "deny": [
       "Bash(gh pr merge:*)"
-    ],
+    ]
   }
 }
