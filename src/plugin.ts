@@ -2,25 +2,25 @@
  * VU Meter Plugin — Main Entry Point
  *
  * Orchestrates audio capture and distributes level data to all active
- * display actions (two-row, one-row, and touch display).
+ * display actions (keypad and touch display).
  *
  * Architecture:
  *   AudioCapture  ──> emits 'levels' events at ~20fps
  *       │
- *       ├──> VUMeterTwoRow.updateLevels()  (key rendering)
- *       ├──> VUMeterOneRow.updateLevels()  (key rendering)
+ *       ├──> VUMeterKeypad.updateLevels()  (key rendering, two-row/one-row modes)
+ *       ├──> VUMeterOneRow.updateLevels()  (legacy compat, hidden from action list)
  *       └──> VUMeterTouch.updateLevels()   (touch strip rendering)
  */
 
 import streamDeck from "@elgato/streamdeck";
-import { VUMeterTwoRow } from "./actions/vumeter-two-row";
+import { VUMeterKeypad } from "./actions/vumeter-two-row";
 import { VUMeterOneRow } from "./actions/vumeter-one-row";
 import { VUMeterTouch } from "./actions/vumeter-touch";
 import { AudioCapture, AudioLevels } from "./audio/audio-capture";
 import { UPDATE_INTERVAL_MS } from "./utils/constants";
 
 // Create action singletons
-const twoRowAction = new VUMeterTwoRow();
+const keypadAction = new VUMeterKeypad();
 const oneRowAction = new VUMeterOneRow();
 const touchAction = new VUMeterTouch();
 
@@ -41,7 +41,7 @@ function syncTheme(newTheme: string, source: "two-row" | "one-row" | "touch"): v
   if (newTheme === currentTheme) return;
   currentTheme = newTheme;
 
-  if (source !== "two-row") twoRowAction.setTheme(newTheme);
+  if (source !== "two-row") keypadAction.setTheme(newTheme);
   if (source !== "one-row") oneRowAction.setTheme(newTheme);
   if (source !== "touch") touchAction.setTheme(newTheme);
 }
@@ -58,7 +58,7 @@ touchAction.setCallbacks(
 );
 
 // Wire up key action settings callbacks
-twoRowAction.setOnSettingsChanged((settings) => {
+keypadAction.setOnSettingsChanged((settings) => {
   applySensitivityTuning(settings);
   if (settings.theme) syncTheme(settings.theme, "two-row");
 });
@@ -92,8 +92,8 @@ function scheduleUpdate(levels: AudioLevels): void {
     // Distribute to all active actions concurrently
     const updates: Promise<void>[] = [];
 
-    if (twoRowAction.getContextCount() > 0) {
-      updates.push(twoRowAction.updateLevels(lvl));
+    if (keypadAction.getContextCount() > 0) {
+      updates.push(keypadAction.updateLevels(lvl));
     }
     if (oneRowAction.getContextCount() > 0) {
       updates.push(oneRowAction.updateLevels(lvl));
@@ -115,7 +115,7 @@ audioCapture.on("levels", (levels: AudioLevels) => {
 audioCapture.start();
 
 // Register actions and connect
-streamDeck.actions.registerAction(twoRowAction);
+streamDeck.actions.registerAction(keypadAction);
 streamDeck.actions.registerAction(oneRowAction);
 streamDeck.actions.registerAction(touchAction);
 

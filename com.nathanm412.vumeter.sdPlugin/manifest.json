@@ -4,7 +4,7 @@
   "Name": "VU Meter",
   "Version": "1.0.0.0",
   "Author": "nathanm412",
-  "Description": "Real-time stereo VU meter with gradient key fills and touch display support. Designed for Stream Deck Plus with three display modes: two-row, one-row, and touch strip.",
+  "Description": "Real-time stereo VU meter with gradient key fills and touch display support. Designed for Stream Deck Plus with keypad and touch strip display modes.",
   "Category": "Audio",
   "CategoryIcon": "imgs/category-icon",
   "Icon": "imgs/plugin-icon",
@@ -30,8 +30,8 @@
   "Actions": [
     {
       "UUID": "com.nathanm412.vumeter.two-row",
-      "Name": "VU Meter (Two Row)",
-      "Tooltip": "Stereo VU meter using two rows of keys. Top row = Left channel, Bottom row = Right channel. Each key shows a gradient fill for fine-grained level display.",
+      "Name": "VU Meter (Keypad)",
+      "Tooltip": "Stereo VU meter for Stream Deck keys. Choose Two-Row mode (separate rows for L/R channels) or One-Row mode (split L/R per key) in settings.",
       "Icon": "imgs/actions/two-row",
       "Controllers": ["Keypad"],
       "States": [
@@ -48,6 +48,7 @@
       "UUID": "com.nathanm412.vumeter.one-row",
       "Name": "VU Meter (One Row)",
       "Tooltip": "Compact stereo VU meter using a single row of keys. Each key is split vertically showing Left and Right channels side by side.",
+      "VisibleInActionsList": false,
       "Icon": "imgs/actions/one-row",
       "Controllers": ["Keypad"],
       "States": [

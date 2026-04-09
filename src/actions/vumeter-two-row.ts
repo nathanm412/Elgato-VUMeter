@@ -1,15 +1,19 @@
 /**
- * Two-Row VU Meter Action
+ * Keypad VU Meter Action (consolidated Two-Row + One-Row)
  *
- * Uses keys arranged in up to 2 rows on any Stream Deck model.
- * Top row = Left channel, Bottom row = Right channel.
+ * Supports two display modes selectable via the Property Inspector:
+ *
+ * Two-Row mode:
+ *   Uses keys in up to 2 rows. Top row = Left channel, Bottom row = Right.
+ *   When all keys are in a single row with horizontal orientation,
+ *   automatically switches to mono mode spanning the full width.
+ *
+ * One-Row mode:
+ *   Each key is split: left half = L channel, right half = R channel
+ *   (vertical) or top = L, bottom = R (horizontal).
  *
  * Dynamically detects how many keys the user has placed and adapts
- * the segment count accordingly. Supports both vertical (bottom-to-top)
- * and horizontal (left-to-right) bar orientations.
- *
- * When all keys are in a single row with horizontal orientation,
- * automatically switches to mono mode spanning the full width.
+ * the segment count accordingly.
  */
 
 import streamDeck, {
@@ -20,13 +24,21 @@ import streamDeck, {
 	WillAppearEvent,
 	WillDisappearEvent,
 } from "@elgato/streamdeck";
-import {renderKeyBar, renderHorizontalKeyBar, renderSolidKeyBar} from "../rendering/key-renderer";
+import {
+	renderKeyBar,
+	renderHorizontalKeyBar,
+	renderSolidKeyBar,
+	renderSplitKeyBar,
+	renderHorizontalSplitKeyBar,
+	renderSolidSplitKeyBar,
+} from "../rendering/key-renderer";
 import type {DisplayStyle} from "../rendering/key-renderer";
 import {AudioLevels} from "../audio/audio-capture";
 import {THEMES, THEME_ORDER} from "../utils/color";
 import type {JsonValue} from "@elgato/utils";
 
-interface TwoRowSettings {
+interface KeypadSettings {
+	mode: "one-row" | "two-row";
 	theme: string;
 	showPeaks: boolean;
 	peakHold: boolean;
@@ -36,7 +48,8 @@ interface TwoRowSettings {
 	[key: string]: JsonValue;
 }
 
-const DEFAULT_SETTINGS: TwoRowSettings = {
+const DEFAULT_SETTINGS: KeypadSettings = {
+	mode: "two-row",
 	theme: "classic",
 	showPeaks: true,
 	peakHold: true,
@@ -47,24 +60,31 @@ const DEFAULT_SETTINGS: TwoRowSettings = {
 
 interface ActionContext {
 	context: string;
-	row: number;    // 0 = top (left), 1 = bottom (right)
+	row: number;
 	column: number;
-	settings: TwoRowSettings;
+	settings: KeypadSettings;
 }
 
 @action({ UUID: "com.nathanm412.vumeter.two-row" })
-export class VUMeterTwoRow extends SingletonAction<TwoRowSettings> {
+export class VUMeterKeypad extends SingletonAction<KeypadSettings> {
 	private contexts: Map<string, ActionContext> = new Map();
 	private lastImages: Map<string, string> = new Map();
-	private onSettingsChanged: ((settings: TwoRowSettings) => void) | null = null;
+	private onSettingsChanged: ((settings: KeypadSettings) => void) | null = null;
 
-	setOnSettingsChanged(cb: (settings: TwoRowSettings) => void): void {
+	setOnSettingsChanged(cb: (settings: KeypadSettings) => void): void {
 		this.onSettingsChanged = cb;
 	}
 	private totalSegments = 1;
 	private minColumn = 0;
 	private minRow = 0;
 	private isSingleRowMode = false;
+
+	private getMode(): "one-row" | "two-row" {
+		// All contexts share the same mode; read from the first one
+		const first = this.contexts.values().next();
+		if (first.done) return "two-row";
+		return first.value.settings.mode || "two-row";
+	}
 
 	private computeSegmentInfo(): void {
 		if (this.contexts.size === 0) {
@@ -86,7 +106,13 @@ export class VUMeterTwoRow extends SingletonAction<TwoRowSettings> {
 		this.minColumn = Math.min(...columns);
 		this.minRow = Math.min(...rows);
 		this.totalSegments = Math.max(...columns) - this.minColumn + 1;
-		this.isSingleRowMode = rows.size === 1;
+
+		// Only track row info for two-row mode
+		if (this.getMode() === "two-row") {
+			this.isSingleRowMode = rows.size === 1;
+		} else {
+			this.isSingleRowMode = false;
+		}
 
 		// Force full re-render when segment count changes
 		if (oldSegments !== this.totalSegments) {
@@ -94,7 +120,7 @@ export class VUMeterTwoRow extends SingletonAction<TwoRowSettings> {
 		}
 	}
 
-	override async onWillAppear(ev: WillAppearEvent<TwoRowSettings>): Promise<void> {
+	override async onWillAppear(ev: WillAppearEvent<KeypadSettings>): Promise<void> {
 		const settings = {...DEFAULT_SETTINGS, ...ev.payload.settings};
 		const coords = (ev.payload as Record<string, unknown>).coordinates as { row: number; column: number } | undefined;
 		if (!coords) return;
@@ -111,12 +137,19 @@ export class VUMeterTwoRow extends SingletonAction<TwoRowSettings> {
 		// Set initial dark state
 		const theme = THEMES[settings.theme] || THEMES.classic;
 		const segIdx = coords.column - this.minColumn;
-		const renderFn = settings.orientation === "horizontal" ? renderHorizontalKeyBar : renderKeyBar;
-		const img = renderFn(0, segIdx, this.totalSegments, theme, -1, false);
+
+		let img: string;
+		if (settings.mode === "one-row") {
+			const renderFn = settings.orientation === "horizontal" ? renderHorizontalSplitKeyBar : renderSplitKeyBar;
+			img = renderFn(0, 0, segIdx, this.totalSegments, theme);
+		} else {
+			const renderFn = settings.orientation === "horizontal" ? renderHorizontalKeyBar : renderKeyBar;
+			img = renderFn(0, segIdx, this.totalSegments, theme, -1, false);
+		}
 		await ev.action.setImage(img);
 	}
 
-	override async onDidReceiveSettings(ev: DidReceiveSettingsEvent<TwoRowSettings>): Promise<void> {
+	override async onDidReceiveSettings(ev: DidReceiveSettingsEvent<KeypadSettings>): Promise<void> {
 		const ctx = this.contexts.get(ev.action.id);
 		if (!ctx) return;
 		const newSettings = { ...DEFAULT_SETTINGS, ...ev.payload.settings };
@@ -136,6 +169,9 @@ export class VUMeterTwoRow extends SingletonAction<TwoRowSettings> {
 			}
 		}
 
+		// Recompute segments (mode change may affect row handling)
+		this.computeSegmentInfo();
+
 		// Force full re-render
 		this.lastImages.clear();
 
@@ -143,13 +179,13 @@ export class VUMeterTwoRow extends SingletonAction<TwoRowSettings> {
 		this.onSettingsChanged?.(newSettings);
 	}
 
-	override async onWillDisappear(ev: WillDisappearEvent<TwoRowSettings>): Promise<void> {
+	override async onWillDisappear(ev: WillDisappearEvent<KeypadSettings>): Promise<void> {
 		this.contexts.delete(ev.action.id);
 		this.lastImages.delete(ev.action.id);
 		this.computeSegmentInfo();
 	}
 
-	override async onKeyDown(ev: KeyDownEvent<TwoRowSettings>): Promise<void> {
+	override async onKeyDown(ev: KeyDownEvent<KeypadSettings>): Promise<void> {
 		// Cycle through themes on key press
 		const ctx = this.contexts.get(ev.action.id);
 		if (!ctx) return;
@@ -163,9 +199,18 @@ export class VUMeterTwoRow extends SingletonAction<TwoRowSettings> {
 
 	/**
 	 * Called by the plugin manager with new audio levels.
-	 * Calculates per-key fill levels and updates the display.
+	 * Dispatches to mode-specific rendering.
 	 */
 	async updateLevels(levels: AudioLevels): Promise<void> {
+		const mode = this.getMode();
+		if (mode === "one-row") {
+			await this.updateLevelsOneRow(levels);
+		} else {
+			await this.updateLevelsTwoRow(levels);
+		}
+	}
+
+	private async updateLevelsTwoRow(levels: AudioLevels): Promise<void> {
 		for (const [id, ctx] of this.contexts) {
 			const theme = THEMES[ctx.settings.theme] || THEMES.classic;
 			const segIdx = ctx.column - this.minColumn;
@@ -217,6 +262,62 @@ export class VUMeterTwoRow extends SingletonAction<TwoRowSettings> {
 			}
 
 			// Only update if the image actually changed (reduces USB traffic)
+			const lastImg = this.lastImages.get(id);
+			if (img !== lastImg) {
+				this.lastImages.set(id, img);
+				try {
+					const action = streamDeck.actions.find((a) => a.id === id);
+					if (action) {
+						await action.setImage(img);
+					}
+				} catch {
+					// Action may have been removed
+				}
+			}
+		}
+	}
+
+	private async updateLevelsOneRow(levels: AudioLevels): Promise<void> {
+		const calcFill = (level: number, start: number, end: number) => {
+			if (level >= end) return 1.0;
+			if (level > start) return (level - start) / (end - start);
+			return 0;
+		};
+
+		const calcPeak = (peak: number, start: number, end: number) => {
+			if (peak >= start && peak < end) {
+				return (peak - start) / (end - start);
+			}
+			return -1;
+		};
+
+		for (const [id, ctx] of this.contexts) {
+			const theme = THEMES[ctx.settings.theme] || THEMES.classic;
+			const segIdx = ctx.column - this.minColumn;
+			const isHorizontal = ctx.settings.orientation === "horizontal";
+			const isSolid = ctx.settings.displayStyle === "solid";
+
+			const segStart = segIdx / this.totalSegments;
+			const segEnd = (segIdx + 1) / this.totalSegments;
+
+			let img: string;
+
+			if (isSolid) {
+				const leftLit = levels.left >= segEnd || levels.left > segStart;
+				const rightLit = levels.right >= segEnd || levels.right > segStart;
+				const leftIsPeak = ctx.settings.showPeaks && levels.peakLeft >= segStart && levels.peakLeft < segEnd;
+				const rightIsPeak = ctx.settings.showPeaks && levels.peakRight >= segStart && levels.peakRight < segEnd;
+				img = renderSolidSplitKeyBar(leftLit, rightLit, segIdx, this.totalSegments, theme, !leftLit && leftIsPeak, !rightLit && rightIsPeak);
+			} else {
+				const leftFill = calcFill(levels.left, segStart, segEnd);
+				const rightFill = calcFill(levels.right, segStart, segEnd);
+				const peakL = ctx.settings.showPeaks ? calcPeak(levels.peakLeft, segStart, segEnd) : -1;
+				const peakR = ctx.settings.showPeaks ? calcPeak(levels.peakRight, segStart, segEnd) : -1;
+
+				const renderFn = isHorizontal ? renderHorizontalSplitKeyBar : renderSplitKeyBar;
+				img = renderFn(leftFill, rightFill, segIdx, this.totalSegments, theme, peakL, peakR);
+			}
+
 			const lastImg = this.lastImages.get(id);
 			if (img !== lastImg) {
 				this.lastImages.set(id, img);

@@ -102,6 +102,17 @@
   </style>
 </head>
 <body>
+  <div class="section" id="modeSection">
+    <div class="section-title">Display Mode</div>
+    <div class="row">
+      <label for="mode">Layout</label>
+      <select id="mode">
+        <option value="two-row">Two Row (separate L/R rows)</option>
+        <option value="one-row">One Row (split L/R per key)</option>
+      </select>
+    </div>
+  </div>
+
   <div class="section">
     <div class="section-title">Color Theme</div>
     <div class="row">
@@ -165,7 +176,8 @@
     • Touch display: tap = cycle theme, long press = reset peaks<br>
     • Place any number of keys left-to-right — the meter adapts automatically<br>
     • Use horizontal mode for a classic left-to-right level display<br>
-    • Two-row horizontal with a single row of keys = mono meter
+    • Two-row mode: horizontal with a single row of keys = mono meter<br>
+    • One-row mode: each key shows both L/R channels side by side
   </div>
 
   <script>
@@ -219,6 +231,7 @@
     }
 
     function loadSettings() {
+      document.getElementById("mode").value = settings.mode || "two-row";
       document.getElementById("theme").value = settings.theme || "classic";
       document.getElementById("showPeaks").checked = settings.showPeaks !== false;
       document.getElementById("orientation").value = settings.orientation || "horizontal";
@@ -228,13 +241,16 @@
       updateSensitivityLabel(sensitivityVal);
       updateThemePreview();
 
-      // Hide orientation and display style for touch action (not applicable)
+      // Hide controls not applicable to certain action types
       const isTouchAction = actionInfo?.action === "com.nathanm412.vumeter.touch";
+      const isLegacyOneRow = actionInfo?.action === "com.nathanm412.vumeter.one-row";
+      document.getElementById("modeSection").style.display = (isTouchAction || isLegacyOneRow) ? "none" : "";
       document.getElementById("orientationSection").style.display = isTouchAction ? "none" : "";
       document.getElementById("displayStyleSection").style.display = isTouchAction ? "none" : "";
     }
 
     function saveSettings() {
+      settings.mode = document.getElementById("mode").value;
       settings.theme = document.getElementById("theme").value;
       settings.showPeaks = document.getElementById("showPeaks").checked;
       settings.orientation = document.getElementById("orientation").value;
@@ -268,6 +284,7 @@
       saveSettings();
     });
 
+    document.getElementById("mode").addEventListener("change", saveSettings);
     document.getElementById("showPeaks").addEventListener("change", saveSettings);
     document.getElementById("orientation").addEventListener("change", saveSettings);
     document.getElementById("displayStyle").addEventListener("change", saveSettings);
