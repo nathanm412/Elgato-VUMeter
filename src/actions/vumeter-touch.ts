@@ -164,5 +164,20 @@ export class VUMeterTouch extends SingletonAction<TouchSettings> {
 	getContextCount(): number {
 		return this.contexts.size;
 	}
+
+	async setTheme(theme: string): Promise<void> {
+		for (const [id, ctx] of this.contexts) {
+			ctx.settings.theme = theme;
+			try {
+				const action = streamDeck.actions.find((a) => a.id === id);
+				if (action) {
+					await action.setSettings(ctx.settings);
+				}
+			} catch {
+				// Action may have been removed
+			}
+		}
+		this.lastImages.clear();
+	}
 }
 

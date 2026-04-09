@@ -34,17 +34,38 @@ function applySensitivityTuning(settings: { sensitivityTuning?: string }): void 
   }
 }
 
+// Cross-action theme sync
+let currentTheme = "classic";
+
+function syncTheme(newTheme: string, source: "two-row" | "one-row" | "touch"): void {
+  if (newTheme === currentTheme) return;
+  currentTheme = newTheme;
+
+  if (source !== "two-row") twoRowAction.setTheme(newTheme);
+  if (source !== "one-row") oneRowAction.setTheme(newTheme);
+  if (source !== "touch") touchAction.setTheme(newTheme);
+}
+
 // Wire up touch encoder callbacks
 touchAction.setCallbacks(
   (delta) => audioCapture.adjustSensitivity(delta),
   () => audioCapture.resetPeaks(),
   () => audioCapture.toggleSensitivityMode(),
-  (settings) => applySensitivityTuning(settings),
+  (settings) => {
+    applySensitivityTuning(settings);
+    if (settings.theme) syncTheme(settings.theme, "touch");
+  },
 );
 
 // Wire up key action settings callbacks
-twoRowAction.setOnSettingsChanged((settings) => applySensitivityTuning(settings));
-oneRowAction.setOnSettingsChanged((settings) => applySensitivityTuning(settings));
+twoRowAction.setOnSettingsChanged((settings) => {
+  applySensitivityTuning(settings);
+  if (settings.theme) syncTheme(settings.theme, "two-row");
+});
+oneRowAction.setOnSettingsChanged((settings) => {
+  applySensitivityTuning(settings);
+  if (settings.theme) syncTheme(settings.theme, "one-row");
+});
 
 // Rate limiter for display updates
 let lastUpdateTime = 0;
