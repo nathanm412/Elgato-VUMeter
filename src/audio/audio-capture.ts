@@ -594,9 +594,14 @@ export class AudioCapture extends EventEmitter {
 
   /**
    * Set the auto-sensitivity tuning level.
-   * "low" = 0.85x (less sensitive), "default" = 1.0x, "high" = 1.15x (more sensitive)
+   * Accepts a numeric value (percentage, e.g. 100 = 1.0x) or legacy
+   * string presets: "low" = 0.85x, "default" = 1.0x, "high" = 1.15x.
    */
-  setSensitivityTuning(tuning: string): void {
+  setSensitivityTuning(tuning: string | number): void {
+    if (typeof tuning === "number") {
+      this.sensitivityTuning = tuning / 100;
+      return;
+    }
     switch (tuning) {
       case "low": this.sensitivityTuning = 0.85; break;
       case "high": this.sensitivityTuning = 1.15; break;

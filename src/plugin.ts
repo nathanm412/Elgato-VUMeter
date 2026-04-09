@@ -28,8 +28,8 @@ const touchAction = new VUMeterTouch();
 const audioCapture = new AudioCapture();
 
 // Handle sensitivity tuning from any action's settings
-function applySensitivityTuning(settings: { sensitivityTuning?: string }): void {
-  if (settings.sensitivityTuning) {
+function applySensitivityTuning(settings: { sensitivityTuning?: string | number }): void {
+  if (settings.sensitivityTuning !== undefined) {
     audioCapture.setSensitivityTuning(settings.sensitivityTuning);
   }
 }

@@ -149,12 +149,9 @@
   <div class="section">
     <div class="section-title">Audio Sensitivity</div>
     <div class="row">
-      <label for="sensitivityTuning">Auto Sensitivity</label>
-      <select id="sensitivityTuning">
-        <option value="low">Low (-15%)</option>
-        <option value="default" selected>Default</option>
-        <option value="high">High (+15%)</option>
-      </select>
+      <label for="sensitivityTuning">Sensitivity</label>
+      <input type="range" id="sensitivityTuning" min="50" max="200" step="5" value="100">
+      <span id="sensitivityValue" style="min-width: 40px; text-align: right; margin-left: 8px;">1.00x</span>
     </div>
     <div class="row">
       <label>Auto-gain adapts to your audio level. On the touch display, rotate the dial for manual control, press to toggle auto/manual.</label>
@@ -209,12 +206,26 @@
       };
     }
 
+    function parseSensitivityTuning(val) {
+      if (typeof val === "number") return val;
+      // Backward compat: convert legacy string presets to numeric
+      if (val === "low") return 85;
+      if (val === "high") return 115;
+      return 100;
+    }
+
+    function updateSensitivityLabel(val) {
+      document.getElementById("sensitivityValue").textContent = (val / 100).toFixed(2) + "x";
+    }
+
     function loadSettings() {
       document.getElementById("theme").value = settings.theme || "classic";
       document.getElementById("showPeaks").checked = settings.showPeaks !== false;
       document.getElementById("orientation").value = settings.orientation || "horizontal";
       document.getElementById("displayStyle").value = settings.displayStyle || "gradient";
-      document.getElementById("sensitivityTuning").value = settings.sensitivityTuning || "default";
+      const sensitivityVal = parseSensitivityTuning(settings.sensitivityTuning);
+      document.getElementById("sensitivityTuning").value = sensitivityVal;
+      updateSensitivityLabel(sensitivityVal);
       updateThemePreview();
 
       // Hide orientation and display style for touch action (not applicable)
@@ -228,7 +239,7 @@
       settings.showPeaks = document.getElementById("showPeaks").checked;
       settings.orientation = document.getElementById("orientation").value;
       settings.displayStyle = document.getElementById("displayStyle").value;
-      settings.sensitivityTuning = document.getElementById("sensitivityTuning").value;
+      settings.sensitivityTuning = parseInt(document.getElementById("sensitivityTuning").value, 10);
 
       if (websocket && websocket.readyState === WebSocket.OPEN) {
         websocket.send(JSON.stringify({
@@ -260,7 +271,10 @@
     document.getElementById("showPeaks").addEventListener("change", saveSettings);
     document.getElementById("orientation").addEventListener("change", saveSettings);
     document.getElementById("displayStyle").addEventListener("change", saveSettings);
-    document.getElementById("sensitivityTuning").addEventListener("change", saveSettings);
+    document.getElementById("sensitivityTuning").addEventListener("input", function () {
+      updateSensitivityLabel(parseInt(this.value, 10));
+      saveSettings();
+    });
 
     // Initialize preview
     updateThemePreview();

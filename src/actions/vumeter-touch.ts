@@ -32,7 +32,7 @@ interface TouchSettings {
 	theme: string;
 	showPeaks: boolean;
 	sensitivity: number;
-	sensitivityTuning: string;
+	sensitivityTuning: string | number;
 	[key: string]: JsonValue;
 }
 
@@ -40,7 +40,7 @@ const DEFAULT_SETTINGS: TouchSettings = {
 	theme: "classic",
 	showPeaks: true,
 	sensitivity: 1.0,
-	sensitivityTuning: "default",
+	sensitivityTuning: 100,
 };
 
 interface EncoderContext {

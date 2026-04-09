@@ -31,7 +31,7 @@ interface OneRowSettings {
   showPeaks: boolean;
   orientation: "vertical" | "horizontal";
   displayStyle: DisplayStyle;
-  sensitivityTuning: string;
+  sensitivityTuning: string | number;
   [key: string]: JsonValue;
 }
 
@@ -40,7 +40,7 @@ const DEFAULT_SETTINGS: OneRowSettings = {
   showPeaks: true,
   orientation: "horizontal",
   displayStyle: "gradient",
-  sensitivityTuning: "default",
+  sensitivityTuning: 100,
 };
 
 interface ActionContext {
