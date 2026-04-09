@@ -193,3 +193,13 @@ git push origin v1.0.0
 The original Python script (`stereo6 a.py`) ran on Stream Deck XL (32 keys) and used 16 keys for the stereo meter with simple solid-color segments. It has been preserved in the repository for reference. The current TypeScript plugin is a complete rewrite with gradient fill rendering, dynamic key detection, and proper SDK v2 integration.
 
 </details>
+
+## Privacy
+
+This plugin processes audio entirely on your local machine. No audio data is transmitted, stored, or recorded. The plugin reads only real-time audio amplitude levels (not audio content) to drive the VU meter display. No telemetry, analytics, or network requests are made.
+
+## License
+
+This project is licensed under the MIT License -- see the [LICENSE](LICENSE) file for details.
+
+Inspired by the original Python VU meter script from [PA9MWO/Elgato-VUMeter](https://github.com/PA9MWO/Elgato-VUMeter).
