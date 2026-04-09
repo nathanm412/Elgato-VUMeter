@@ -54,7 +54,7 @@ Renders a full-width stereo VU meter across the 800x100 pixel touch strip, with 
 
 Encoder interactions:
 - **Rotate** — Adjust sensitivity
-- **Push** — Toggle peak hold
+- **Push** — Toggle auto/manual sensitivity
 - **Tap** — Cycle color themes
 - **Long press** — Reset peak markers
 

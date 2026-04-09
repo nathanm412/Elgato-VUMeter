@@ -7,7 +7,7 @@
  *
  * Encoder interactions:
  *   - Rotate: Adjust sensitivity
- *   - Push: Toggle peak hold
+ *   - Push: Toggle auto/manual sensitivity
  *   - Touch: Cycle color theme
  *   - Long Touch: Reset peaks
  */
