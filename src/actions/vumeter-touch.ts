@@ -32,6 +32,7 @@ interface TouchSettings {
 	theme: string;
 	showPeaks: boolean;
 	sensitivity: number;
+	sensitivityTuning: string;
 	[key: string]: JsonValue;
 }
 
@@ -39,6 +40,7 @@ const DEFAULT_SETTINGS: TouchSettings = {
 	theme: "classic",
 	showPeaks: true,
 	sensitivity: 1.0,
+	sensitivityTuning: "default",
 };
 
 interface EncoderContext {
@@ -54,15 +56,18 @@ export class VUMeterTouch extends SingletonAction<TouchSettings> {
 	private onSensitivityChange: ((delta: number) => void) | null = null;
 	private onResetPeaks: (() => void) | null = null;
 	private onToggleSensitivityMode: (() => void) | null = null;
+	private onSettingsChanged: ((settings: TouchSettings) => void) | null = null;
 
 	setCallbacks(
 		onSensitivity: (delta: number) => void,
 		onReset: () => void,
 		onToggleMode: () => void,
+		onSettings: (settings: TouchSettings) => void,
 	): void {
 		this.onSensitivityChange = onSensitivity;
 		this.onResetPeaks = onReset;
 		this.onToggleSensitivityMode = onToggleMode;
+		this.onSettingsChanged = onSettings;
 	}
 
 	override async onWillAppear(ev: WillAppearEvent<TouchSettings>): Promise<void> {
@@ -80,8 +85,25 @@ export class VUMeterTouch extends SingletonAction<TouchSettings> {
 	override async onDidReceiveSettings(ev: DidReceiveSettingsEvent<TouchSettings>): Promise<void> {
 		const ctx = this.contexts.get(ev.action.id);
 		if (!ctx) return;
-		ctx.settings = { ...DEFAULT_SETTINGS, ...ev.payload.settings };
-		this.lastImages.delete(ev.action.id);
+		const newSettings = { ...DEFAULT_SETTINGS, ...ev.payload.settings };
+		ctx.settings = newSettings;
+
+		// Global sync: apply settings to all sibling encoder contexts
+		for (const [otherId, otherCtx] of this.contexts) {
+			if (otherId === ev.action.id) continue;
+			otherCtx.settings = { ...newSettings };
+			try {
+				const action = streamDeck.actions.find((a) => a.id === otherId);
+				if (action) {
+					await action.setSettings(newSettings);
+				}
+			} catch {
+				// Action may have been removed
+			}
+		}
+
+		this.lastImages.clear();
+		this.onSettingsChanged?.(newSettings);
 	}
 
 	override async onWillDisappear(ev: WillDisappearEvent<TouchSettings>): Promise<void> {

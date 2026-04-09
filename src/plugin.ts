@@ -27,12 +27,24 @@ const touchAction = new VUMeterTouch();
 // Create audio capture
 const audioCapture = new AudioCapture();
 
+// Handle sensitivity tuning from any action's settings
+function applySensitivityTuning(settings: { sensitivityTuning?: string }): void {
+  if (settings.sensitivityTuning) {
+    audioCapture.setSensitivityTuning(settings.sensitivityTuning);
+  }
+}
+
 // Wire up touch encoder callbacks
 touchAction.setCallbacks(
   (delta) => audioCapture.adjustSensitivity(delta),
   () => audioCapture.resetPeaks(),
   () => audioCapture.toggleSensitivityMode(),
+  (settings) => applySensitivityTuning(settings),
 );
+
+// Wire up key action settings callbacks
+twoRowAction.setOnSettingsChanged((settings) => applySensitivityTuning(settings));
+oneRowAction.setOnSettingsChanged((settings) => applySensitivityTuning(settings));
 
 // Rate limiter for display updates
 let lastUpdateTime = 0;
