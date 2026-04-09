@@ -10,7 +10,12 @@
       "Bash(gh label:*)",
       "Bash(echo \"exit: $?\")",
       "Bash(npm run:*)",
-      "Bash(npm test:*)"
+      "Bash(npm test:*)",
+      "Bash(ls -la /home/nathanm412/Elgato-VUMeter/*.streamDeckPlugin)",
+      "Bash(git checkout:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m ':*)",
+      "Bash(git push:*)"
     ],
     "deny": [
       "Bash(gh pr merge:*)"
