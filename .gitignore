@@ -9,3 +9,5 @@ dist/
 .DS_Store
 Thumbs.db
 coverage/
+com.nathanm412.vumeter.sdPlugin/bin/package.json
+com.nathanm412.vumeter.sdPlugin/bin/plugin.js
