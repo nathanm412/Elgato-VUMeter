@@ -7,7 +7,7 @@
  *
  * Encoder interactions:
  *   - Rotate: Adjust sensitivity
- *   - Push: Toggle peak hold
+ *   - Push: Toggle auto/manual sensitivity
  *   - Touch: Cycle color theme
  *   - Long Touch: Reset peaks
  */
@@ -32,7 +32,7 @@ interface TouchSettings {
 	theme: string;
 	showPeaks: boolean;
 	sensitivity: number;
-	sensitivityTuning: string;
+	sensitivityTuning: string | number;
 	[key: string]: JsonValue;
 }
 
@@ -40,7 +40,7 @@ const DEFAULT_SETTINGS: TouchSettings = {
 	theme: "classic",
 	showPeaks: true,
 	sensitivity: 1.0,
-	sensitivityTuning: "default",
+	sensitivityTuning: 100,
 };
 
 interface EncoderContext {
@@ -163,6 +163,21 @@ export class VUMeterTouch extends SingletonAction<TouchSettings> {
 
 	getContextCount(): number {
 		return this.contexts.size;
+	}
+
+	async setTheme(theme: string): Promise<void> {
+		for (const [id, ctx] of this.contexts) {
+			ctx.settings.theme = theme;
+			try {
+				const action = streamDeck.actions.find((a) => a.id === id);
+				if (action) {
+					await action.setSettings(ctx.settings);
+				}
+			} catch {
+				// Action may have been removed
+			}
+		}
+		this.lastImages.clear();
 	}
 }
 

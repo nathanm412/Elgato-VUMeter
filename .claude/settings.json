@@ -15,7 +15,10 @@
       "Bash(git checkout:*)",
       "Bash(git add:*)",
       "Bash(git commit -m ':*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(git -C /home/nathanm412/Elgato-VUMeter log:*)",
+      "Bash(git -C /home/nathanm412/Elgato-VUMeter log:*)",
+      "Bash(git stash:*)"
     ],
     "deny": [
       "Bash(gh pr merge:*)"
