@@ -17,7 +17,7 @@ This is a TypeScript Stream Deck plugin that renders a real-time stereo audio VU
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run watch` | `tsc --watch` for development |
 | `npm run dev` | Build + launch in Stream Deck dev mode |
-| `npm run pack` | Build + package as `.streamDeckPlugin` |
+| `npm run pack` | Build + package as `.streamDeckPlugin` for distribution (installable by double-clicking) |
 
 Run a single test file: `npx jest src/rendering/key-renderer.test.ts`
 
@@ -62,4 +62,6 @@ Always create pull requests against `nathanm412/Elgato-VUMeter`, not any upstrea
 
 ## CI
 
-GitHub Actions (`.github/workflows/ci.yml`) runs on pushes to `main`, `develop`, `feature/**`, `claude/**` and PRs to `main`. Pipeline: lint + typecheck -> tests -> build -> package (main/tags only) -> release (version tags only). Releases are created by pushing a `v*` tag.
+GitHub Actions (`.github/workflows/ci.yml`) runs on pushes to `main`, `develop`, `feature/**`, `claude/**` and PRs to `main`. Pipeline: lint + typecheck -> tests -> build -> package (main/tags only) -> release (version tags only).
+
+A second workflow (`.github/workflows/release-on-merge.yml`) automates releases when a PR with a `Pre-Release` or `New-Release` label is merged to `main`. `Pre-Release` creates a pre-release with a date+SHA tag; `New-Release` creates a full release using the version from `package.json`. Releases can also be created manually by pushing a `v*` tag.
