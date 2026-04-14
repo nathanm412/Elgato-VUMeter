@@ -115,18 +115,30 @@ async function main() {
   console.log("\nRunning tests...");
   runVisible("npm test");
 
+  // Bump version in package.json/package-lock.json (without committing)
+  console.log(`\nBumping version to ${newVersion}...`);
+  runVisible(`npm version ${npmVersionArg} --no-git-tag-version`);
+
+  // Sync manifest.json with the new version
+  console.log("\nSyncing manifest.json...");
+  runVisible("node scripts/sync-manifest.js");
+
+  // Build with the new version
   console.log("\nBuilding...");
   runVisible("npm run build");
 
-  // Bump version, commit, and tag
-  console.log(`\nBumping version to ${newVersion}...`);
-  runVisible(`npm version ${npmVersionArg} -m "Release %s"`);
+  // Commit, tag, and push
+  const versionTag = newVersion.startsWith("v") ? newVersion : `v${newVersion}`;
+  console.log(`\nCommitting release ${versionTag}...`);
+  runVisible("git add package.json package-lock.json com.nathanm412.vumeter.sdPlugin/manifest.json");
+  runVisible(`git commit -m "Release ${versionTag}"`);
+  runVisible(`git tag ${versionTag}`);
 
   // Push commit and tag
   console.log("\nPushing to origin...");
   runVisible("git push origin main --follow-tags");
 
-  console.log(`\nDone! Release ${newVersion} has been pushed.`);
+  console.log(`\nDone! Release ${versionTag} has been pushed.`);
   console.log("CI will build, package, and create the GitHub release automatically.");
   console.log("Monitor at: https://github.com/nathanm412/Elgato-VUMeter/actions");
 }

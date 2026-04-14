@@ -49,6 +49,12 @@ jobs:
         run: |
           test -f com.nathanm412.vumeter.sdPlugin/bin/plugin.js
           test -f com.nathanm412.vumeter.sdPlugin/manifest.json
+      - name: Verify manifest.json is in sync
+        run: |
+          git diff --exit-code com.nathanm412.vumeter.sdPlugin/manifest.json || {
+            echo "::error::manifest.json is out of sync with package.json. Run 'npm run build' locally and commit the changes."
+            exit 1
+          }
       - name: Upload build artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
