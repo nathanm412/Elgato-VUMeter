@@ -123,6 +123,7 @@ The plugin works on any Stream Deck model with LCD keys:
 | `npm run typecheck` | TypeScript type checking |
 | `npm run pack` | Build + package as .streamDeckPlugin |
 | `npm run clean` | Remove build artifacts |
+| `npm run release -- <major\|minor\|patch> [--pre-release]` | Bump version, build, tag, and push a release |
 
 ### Building from Source
 
@@ -177,13 +178,19 @@ The GitHub Actions pipeline runs on every push and PR:
 2. **Tests** — Jest unit tests for rendering and color utilities
 3. **Build** — Full TypeScript compilation + asset verification
 4. **Package** — Creates `.streamDeckPlugin` artifact (main branch only)
-5. **Release** — Auto-creates GitHub releases on version tags
+5. **Release** — Auto-creates GitHub releases on version tags (pre-release tags are detected automatically)
 
-To create a release:
+To create a release, use the release script from the `main` branch:
 ```bash
-git tag v1.0.0
-git push origin v1.0.0
+npm run release -- patch              # 1.0.0 -> 1.0.1 (full release)
+npm run release -- minor              # 1.0.0 -> 1.1.0 (full release)
+npm run release -- major              # 1.0.0 -> 2.0.0 (full release)
+npm run release -- patch --pre-release # 1.0.0 -> 1.0.1-0 (pre-release)
 ```
+
+The script validates you're on `main` with a clean working directory, runs lint/typecheck/tests/build, bumps the version in `package.json`, creates a tagged commit, and pushes to origin. CI then packages the plugin and creates the GitHub release.
+
+Releases can also be triggered by merging a PR to `main` with a `Pre-Release` or `New-Release` label.
 
 </details>
 
