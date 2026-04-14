@@ -69,3 +69,5 @@ A second workflow (`.github/workflows/release-on-merge.yml`) automates releases 
 ## Documentation & Hover Text
 
 When changing functionality, always update the corresponding hover text / tooltips in `manifest.json` (Tooltip, TriggerDescription), source file doc comments, property inspector tips, and README. Mismatched documentation confuses users and is easy to miss.
+
+When changing the plugin description in README.md, also update the `description` field in `package.json`. The build system automatically syncs this to `manifest.json`. Run `npm run build` and commit the updated manifest.
