@@ -36,7 +36,7 @@
     "@rollup/plugin-typescript": "12.3.0",
     "@tsconfig/node24": "24.0.4",
     "@types/jest": "30.0.0",
-    "@types/node": "24.12.2",
+    "@types/node": "24.12.3",
     "@typescript-eslint/eslint-plugin": "8.59.2",
     "@typescript-eslint/parser": "8.59.2",
     "archiver": "7.0.1",
