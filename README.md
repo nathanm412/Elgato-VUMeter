@@ -95,7 +95,7 @@ The plugin works on any Stream Deck model with LCD keys:
 
 ## Audio Setup
 
-**Windows:** Works automatically via WASAPI loopback — captures whatever audio is playing through your default output device.
+**Windows:** Works automatically via WASAPI loopback — captures whatever audio is playing through your default output device. If you switch your default output (e.g. Speakers → Headphones) while audio is playing, the meter follows the change automatically within about a second.
 
 **macOS:** Requires a virtual audio loopback device like [BlackHole](https://existential.audio/blackhole/) to capture system audio.
 

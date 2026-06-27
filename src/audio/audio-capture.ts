@@ -41,6 +41,42 @@ export interface AudioCaptureError {
   message: string;
 }
 
+/**
+ * Decision returned by {@link AudioCapture.evaluateDeviceChange}.
+ */
+export interface DeviceChangeDecision {
+  /** Whether capture should be restarted because the default device changed. */
+  restart: boolean;
+  /** The device identity to store going forward. */
+  nextDevice: string;
+}
+
+/**
+ * PowerShell snippet that prints the ID of the current default render endpoint
+ * using the same Core Audio (MMDevice) API as the capture helper. This is far
+ * more reliable than the old `Win32_SoundDevice` CIM query, which enumerated
+ * sound *adapters* and could not tell two endpoints on the same adapter apart.
+ */
+const WIN_DEFAULT_ENDPOINT_ID_SCRIPT = `
+Add-Type -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+public class DefaultEndpoint {
+  [ComImport, Guid("A95664D2-9614-4F35-A746-DE8DB63617E6"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+  interface IMMDeviceEnumerator { int NotImpl1(); int GetDefaultAudioEndpoint(int dataFlow, int role, out IMMDevice ppDevice); }
+  [ComImport, Guid("D666063F-1587-4E43-81F1-B948E807363F"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+  interface IMMDevice { int Activate(ref Guid iid, int c, IntPtr p, out object o); int OpenPropertyStore(int a, out IntPtr s); int GetId([MarshalAs(UnmanagedType.LPWStr)] out string id); int GetState(out int st); }
+  [ComImport, Guid("BCDE0395-E52F-467C-8E3D-C4579291692E")] class MMDeviceEnumerator { }
+  public static string Id() {
+    var e = (IMMDeviceEnumerator)(new MMDeviceEnumerator());
+    IMMDevice dev; e.GetDefaultAudioEndpoint(0, 1, out dev);
+    string id; dev.GetId(out id); return id;
+  }
+}
+"@
+[DefaultEndpoint]::Id()
+`.trim();
+
 export class AudioCapture extends EventEmitter {
   private process: ChildProcess | null = null;
   private running = false;
@@ -366,7 +402,7 @@ export class AudioCapture extends EventEmitter {
   private startDevicePolling(): void {
     this.stopDevicePolling();
 
-    // Get initial device name
+    // Get initial device identity
     this.queryDefaultDevice().then((name) => {
       this.currentDeviceName = name;
     }).catch(() => {
@@ -376,18 +412,40 @@ export class AudioCapture extends EventEmitter {
     this.devicePollTimer = setInterval(async () => {
       try {
         const deviceName = await this.queryDefaultDevice();
-        if (this.currentDeviceName && deviceName !== this.currentDeviceName) {
+        const decision = AudioCapture.evaluateDeviceChange(this.currentDeviceName, deviceName);
+        if (decision.restart) {
           console.log(`Audio device changed: "${this.currentDeviceName}" -> "${deviceName}"`);
-          this.currentDeviceName = deviceName;
+          this.currentDeviceName = decision.nextDevice;
           this.emit("deviceChange", deviceName);
           this.restartCapture();
-        } else if (!this.currentDeviceName && deviceName) {
-          this.currentDeviceName = deviceName;
+        } else {
+          this.currentDeviceName = decision.nextDevice;
         }
       } catch {
         // Device query failed — device may be disconnected
       }
     }, this.DEVICE_POLL_INTERVAL_MS);
+  }
+
+  /**
+   * Pure decision helper: given the previously seen default device identity and
+   * the freshly queried one, decide whether capture must restart and which
+   * identity to remember. Restart only when we had a known device and it
+   * actually changed; an empty current reading (query failure) is ignored.
+   *
+   * Extracted as a static method so the restart policy can be unit-tested
+   * without spawning real audio processes.
+   */
+  static evaluateDeviceChange(previous: string, current: string): DeviceChangeDecision {
+    if (!current) {
+      // No reliable reading — keep what we had, don't restart.
+      return { restart: false, nextDevice: previous };
+    }
+    if (previous && current !== previous) {
+      return { restart: true, nextDevice: current };
+    }
+    // First reading, or unchanged device.
+    return { restart: false, nextDevice: current };
   }
 
   private stopDevicePolling(): void {
@@ -407,7 +465,7 @@ export class AudioCapture extends EventEmitter {
 
       if (process.platform === "win32") {
         cmd = "powershell.exe";
-        args = ["-Command", "(Get-CimInstance Win32_SoundDevice | Where-Object { $_.StatusInfo -eq 3 } | Select-Object -First 1).Name"];
+        args = ["-ExecutionPolicy", "Bypass", "-Command", WIN_DEFAULT_ENDPOINT_ID_SCRIPT];
       } else if (process.platform === "darwin") {
         cmd = "bash";
         args = ["-c", "system_profiler SPAudioDataType 2>/dev/null | grep 'Default Output Device: Yes' -B5 | head -1 | sed 's/^[ ]*//'"];
@@ -441,11 +499,27 @@ export class AudioCapture extends EventEmitter {
       this.process = null;
     }
     this.retryCount = 0;
+    this.resetCaptureState();
     if (process.platform === "win32") {
       this.startWindows();
     } else if (process.platform === "darwin") {
       this.startMacOS();
     }
+  }
+
+  /**
+   * Clear smoothing/peak/adaptive state so a rebind to a new device starts
+   * fresh rather than decaying from the old device's levels.
+   */
+  private resetCaptureState(): void {
+    this.history = [];
+    this.lastProcessTime = 0;
+    this.displayLeft = 0;
+    this.displayRight = 0;
+    this.peakLeft = 0;
+    this.peakRight = 0;
+    this.peakLeftTime = 0;
+    this.peakRightTime = 0;
   }
 
   /**
