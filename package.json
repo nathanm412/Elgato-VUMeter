@@ -1,6 +1,6 @@
 {
   "name": "com.nathanm412.vumeter",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Real-time stereo VU meter with gradient key fills and touch display support. Designed for Stream Deck Plus with keypad and touch strip display modes.",
   "main": "com.nathanm412.vumeter.sdPlugin/bin/plugin.js",
   "scripts": {
