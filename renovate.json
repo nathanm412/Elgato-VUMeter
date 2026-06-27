@@ -13,6 +13,16 @@
   },
   "packageRules": [
     {
+      "description": "Block archiver major upgrades: v8 dropped the archiver('zip', opts) factory API that scripts/pack.js depends on, which breaks release packaging. Remove this rule only after pack.js is migrated to the new API or archiver is replaced (see issue #112).",
+      "matchPackageNames": [
+        "archiver"
+      ],
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "enabled": false
+    },
+    {
       "matchDepTypes": [
         "devDependencies"
       ],
