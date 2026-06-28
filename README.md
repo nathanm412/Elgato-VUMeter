@@ -106,9 +106,9 @@ The plugin works on any Stream Deck model with LCD keys:
 
 ### Prerequisites
 
-- Node.js 20+
+- Node.js 24+
 - npm 9+
-- Stream Deck app 6.6+ (for testing)
+- Stream Deck app 7.1+ (for testing)
 - Elgato Stream Deck hardware (for full testing)
 
 ### Commands

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a TypeScript Stream Deck plugin that renders a real-time stereo audio VU meter on Elgato Stream Deck keys and touch displays. It uses the Elgato Stream Deck SDK v2 (`@elgato/streamdeck`) and targets Node.js 20.
+This is a TypeScript Stream Deck plugin that renders a real-time stereo audio VU meter on Elgato Stream Deck keys and touch displays. It uses the Elgato Stream Deck SDK v2 (`@elgato/streamdeck`) and targets Node.js 24 (requires the Stream Deck app 7.1+).
 
 ## Commands
 

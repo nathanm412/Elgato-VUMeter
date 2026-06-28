@@ -58,6 +58,16 @@
         "/vitest/",
         "/prettier/"
       ]
+    },
+    {
+      "description": "Pin @types/node to the major matching the plugin's Node runtime (manifest Nodejs.Version, currently 24). Stream Deck only ships Node 20/24 runtimes, so a major bump (e.g. to 26) would type-check against APIs absent at runtime. Bump this in lockstep with manifest Nodejs.Version.",
+      "matchPackageNames": [
+        "@types/node"
+      ],
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "enabled": false
     }
   ]
 }
