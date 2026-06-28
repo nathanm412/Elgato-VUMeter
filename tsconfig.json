@@ -6,7 +6,8 @@
     ],
     "noImplicitOverride": true,
     "module": "ES2022",
-    "moduleResolution": "Bundler"
+    "moduleResolution": "Bundler",
+    "types": ["node", "jest"]
   },
   "include": [
     "src/**/*.ts"

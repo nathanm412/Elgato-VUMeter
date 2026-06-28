@@ -1,13 +1,13 @@
 {
   "name": "com.nathanm412.vumeter",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "Real-time stereo VU meter with gradient key fills and touch display support. Designed for Stream Deck Plus with keypad and touch strip display modes.",
   "main": "com.nathanm412.vumeter.sdPlugin/bin/plugin.js",
   "scripts": {
     "build": "node scripts/sync-manifest.js && rollup -c && node scripts/copy-assets.js",
     "sync-manifest": "node scripts/sync-manifest.js",
     "watch": "tsc --watch",
-    "pack": "npm run build && node scripts/pack.js",
+    "pack": "npm run build && streamdeck pack com.nathanm412.vumeter.sdPlugin --force",
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",
     "typecheck": "tsc --noEmit",
@@ -39,13 +39,12 @@
     "@types/node": "24.13.2",
     "@typescript-eslint/eslint-plugin": "8.62.0",
     "@typescript-eslint/parser": "8.62.0",
-    "archiver": "^7.0.1",
-    "eslint": "10.5.0",
+    "eslint": "10.6.0",
     "jest": "30.4.2",
     "rollup": "4.62.2",
     "ts-jest": "29.4.11",
     "tslib": "2.8.1",
-    "typescript": "5.9.3",
+    "typescript": "6.0.3",
     "typescript-eslint": "8.62.0"
   },
   "dependencies": {
