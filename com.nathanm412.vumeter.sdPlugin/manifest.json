@@ -2,7 +2,7 @@
   "$schema": "https://schemas.elgato.com/streamdeck/plugins/manifest.json",
   "UUID": "com.nathanm412.vumeter",
   "Name": "VU Meter",
-  "Version": "1.2.1.0",
+  "Version": "1.2.2.0",
   "Author": "nathanm412",
   "Description": "Real-time stereo VU meter with gradient key fills and touch display support. Designed for Stream Deck Plus with keypad and touch strip display modes.",
   "Category": "Audio",

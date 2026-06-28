@@ -47,7 +47,10 @@ if (manifest.Description !== pkg.description) {
 }
 
 if (changes.length > 0) {
-  fs.writeFileSync(MANIFEST_PATH, JSON.stringify(manifest, null, 2) + "\n");
+  // No trailing newline: matches the canonical form `streamdeck pack` writes when
+  // it re-serializes the manifest, so `npm run build` and `npm run pack` don't
+  // leave manifest.json dirty in the working tree.
+  fs.writeFileSync(MANIFEST_PATH, JSON.stringify(manifest, null, 2));
   console.log("manifest.json synced with package.json:");
   for (const change of changes) {
     console.log(`  - ${change}`);

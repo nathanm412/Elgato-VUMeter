@@ -10,5 +10,6 @@ dist/
 Thumbs.db
 coverage/
 *.dll
+*.streamDeckPlugin
 com.nathanm412.vumeter.sdPlugin/bin/package.json
 com.nathanm412.vumeter.sdPlugin/bin/plugin.js
