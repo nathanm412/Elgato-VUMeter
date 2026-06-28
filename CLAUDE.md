@@ -48,6 +48,22 @@ AudioCapture  ──> emits 'levels' events at ~20fps
 
 Rollup bundles `src/plugin.ts` into a single CJS file at `com.nathanm412.vumeter.sdPlugin/bin/plugin.js`. The `scripts/copy-assets.js` post-build step copies helper scripts into the plugin directory.
 
+## Packaging
+
+`npm run pack` builds, then runs the official Elgato CLI's `streamdeck pack` (`@elgato/cli`) — there is no hand-rolled zip script. Notes:
+
+- **It validates the manifest**; validation *errors* abort packing (warnings don't). The top-level plugin `Icon` **must be a `.png`** (with `@2x`); action/`CategoryIcon` icons may be SVG. PNG icons are committed alongside the SVGs in `imgs/`.
+- Excludes are driven by `com.nathanm412.vumeter.sdPlugin/.sdignore` (maps, `.d.ts`, test files, etc.) — edit that, not the pack command, to change what ships.
+- `streamdeck pack` **re-serializes `manifest.json` without a trailing newline** as a side effect. To keep `build`/`pack` from dirtying the tree, `sync-manifest.js` also writes the manifest without a trailing newline — don't re-add one.
+
+## manifest.json conventions
+
+`com.nathanm412.vumeter.sdPlugin/manifest.json` is **partly generated**: `scripts/sync-manifest.js` (run as the first build step) syncs only `Version` (as `X.Y.Z.0`) and `Description` from `package.json`; everything else is hand-edited. The CI build job enforces manifest-in-sync, and a separate `validate-manifest.yml` workflow checks JSON validity, required fields, unique action UUIDs, and referenced files.
+
+## Node runtime / `@types/node` alignment
+
+The plugin runs under the Node version declared in `manifest.json` `Nodejs.Version` — **not** the latest available. Keep `@types/node`, the `@tsconfig/node*` base, and CI's `node-version` matched to it. Stream Deck only ships **Node 20 or 24** runtimes (per `@elgato/schemas`); there is no Node 26 runtime. Node `24` requires `Software.MinimumVersion` ≥ **7.1** (lower minimums force Node 20). A Renovate rule blocks `@types/node` major bumps so it tracks the runtime — bump `@types/node` and `manifest.Nodejs.Version` together. `tsconfig.json` pins `"types": ["node", "jest"]` (TS 6 no longer auto-resolves the Jest ambient globals for the typechecked `*.test.ts` files otherwise). A full dependency inventory lives in `docs/dependency-review.md`.
+
 ## Testing
 
 Jest with `ts-jest` preset. Tests live alongside source files (`*.test.ts`). Current test coverage: rendering logic (`key-renderer.test.ts`) and color utilities (`color.test.ts`). Coverage excludes `plugin.ts` and `.d.ts` files.
