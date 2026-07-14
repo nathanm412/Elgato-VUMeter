@@ -39,7 +39,7 @@
     "@types/node": "24.13.3",
     "@typescript-eslint/eslint-plugin": "8.63.0",
     "@typescript-eslint/parser": "8.63.0",
-    "eslint": "10.6.0",
+    "eslint": "10.7.0",
     "jest": "30.4.2",
     "rollup": "4.62.2",
     "ts-jest": "29.4.11",
