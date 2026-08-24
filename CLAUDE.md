@@ -14,8 +14,8 @@ This is a TypeScript Stream Deck plugin that renders a real-time stereo audio VU
 | `npm test` | Run Jest tests (uses `--passWithNoTests`) |
 | `npm run lint` | ESLint on `src/` |
 | `npm run lint:fix` | ESLint with auto-fix |
-| `npm run typecheck` | `tsc --noEmit` |
-| `npm run watch` | `tsc --watch` for development |
+| `npm run typecheck` | Type-check with the native TypeScript 7 compiler (`@typescript/native`) |
+| `npm run watch` | Watch/type-check with the native TypeScript 7 compiler (`@typescript/native`) |
 | `npm run dev` | Build + launch in Stream Deck dev mode |
 | `npm run pack` | Build + package as `.streamDeckPlugin` for distribution (installable by double-clicking) |
 
@@ -63,6 +63,16 @@ Rollup bundles `src/plugin.ts` into a single CJS file at `com.nathanm412.vumeter
 ## Node runtime / `@types/node` alignment
 
 The plugin runs under the Node version declared in `manifest.json` `Nodejs.Version` — **not** the latest available. Keep `@types/node`, the `@tsconfig/node*` base, and CI's `node-version` matched to it. Stream Deck only ships **Node 20 or 24** runtimes (per `@elgato/schemas`); there is no Node 26 runtime. Node `24` requires `Software.MinimumVersion` ≥ **7.1** (lower minimums force Node 20). A Renovate rule blocks `@types/node` major bumps so it tracks the runtime — bump `@types/node` and `manifest.Nodejs.Version` together. `tsconfig.json` pins `"types": ["node", "jest"]` (TS 6 no longer auto-resolves the Jest ambient globals for the typechecked `*.test.ts` files otherwise). A full dependency inventory lives in `docs/dependency-review.md`.
+
+### TypeScript 7 side-by-side compiler setup
+
+TypeScript 7 uses the native compiler for CLI type-checking, while several tools in this repository still consume TypeScript's JavaScript compiler API. Keep these two dependencies intentionally side-by-side:
+
+- `@typescript/native` aliases `typescript@7.x` and is the compiler used by `npm run typecheck` and `npm run watch`.
+- `typescript` aliases `@typescript/typescript6@6.x` so `typescript-eslint`, `ts-jest`, and `@rollup/plugin-typescript` continue to receive the supported TypeScript 6 programmatic API.
+- The typecheck/watch scripts invoke `node_modules/@typescript/native/bin/tsc` explicitly so npm bin-link ordering cannot accidentally select the compatibility compiler.
+
+Do not replace the `typescript` compatibility alias with a direct TypeScript 7 dependency until the programmatic-API consumers support the native compiler.
 
 ## Testing
 
