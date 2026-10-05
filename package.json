@@ -50,6 +50,6 @@
   },
   "dependencies": {
     "@elgato-stream-deck/node": "^7.6.2",
-    "@elgato/streamdeck": "^2.0.4"
+    "@elgato/streamdeck": "^3.0.0"
   }
 }
